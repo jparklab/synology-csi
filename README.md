@@ -75,3 +75,6 @@ A Container Storage Interface Driver for Synology NAS
 
     kubectl create secret generic synology-config --from-file=syno-config.yml
 
+### Deploy to kubernetes
+
+    kubectl apply -f deploy/kubernetes/v1.12
