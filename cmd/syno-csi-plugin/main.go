@@ -42,13 +42,13 @@ func main() {
 
 			synoOption, err := options.ReadConfig(runOptions.SynologyConf)
 			if err != nil {
-				fmt.Println("Failed to read config: %v", err)
+				fmt.Printf("Failed to read config: %v\n", err)
 				return
 			}
 
 			drv, err := driver.NewDriver(nodeID, endpoint, synoOption)
 			if err != nil {
-				fmt.Println("Failed to create driver: %v", err)
+				fmt.Printf("Failed to create driver: %v\n", err)
 				return
 			}
 			drv.Run()
