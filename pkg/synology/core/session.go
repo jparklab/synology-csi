@@ -70,7 +70,7 @@ type authOption struct {
 }
 
 type securityData struct {
-	timeout int `json:"timeout"`
+	Timeout int `json:"timeout"`
 }
 
 type responseData struct {
@@ -141,7 +141,7 @@ func (s *session) login() (string, error) {
 
 	authResp := responseData{}
 	if err = json.Unmarshal(body, &authResp); err != nil {
-		glog.Errorf("Failed to parse login response: %s", body)
+		glog.Errorf("Failed to parse login response: %s(%v)", body, err)
 		return "", err
 	}
 
@@ -174,11 +174,11 @@ func (s *session) login() (string, error) {
 
 	securityConf := securityData{}
 	if err = json.Unmarshal(body, &securityConf); err != nil {
-		glog.Errorf("Failed to parse auth response: %s", body)
+		glog.Errorf("Failed to parse auth response: %s(%v)", body, err)
 		return "", err
 	}
 
-	s.timeoutMinute = securityConf.timeout
+	s.timeoutMinute = securityConf.Timeout
 
 	now := time.Now()
 	s.lastLoginTime = &now
