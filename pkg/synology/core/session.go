@@ -17,7 +17,6 @@
 package core
 
 import (
-	"log"
 	"errors"
 	"fmt"
 	"time"
@@ -26,6 +25,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/golang/glog"
 
 	"github.com/google/go-querystring/query"
 )
@@ -124,7 +125,7 @@ func (s *session) login() (string, error) {
 		v.Encode(),
 	)
 
-	log.Printf("Logging in via %s", uri)
+	glog.V(5).Infof("Logging in via %s", uri)
 
 	resp, err := http.Get(uri)
 	if err != nil {
@@ -140,7 +141,7 @@ func (s *session) login() (string, error) {
 
 	authResp := responseData{}
 	if err = json.Unmarshal(body, &authResp); err != nil {
-		log.Printf("Failed to parse: %s", body)
+		glog.Errorf("Failed to parse login response: %s", body)
 		return "", err
 	}
 
@@ -173,7 +174,7 @@ func (s *session) login() (string, error) {
 
 	securityConf := securityData{}
 	if err = json.Unmarshal(body, &securityConf); err != nil {
-		log.Printf("Failed to parse: %s", body)
+		glog.Errorf("Failed to parse auth response: %s", body)
 		return "", err
 	}
 
@@ -230,7 +231,7 @@ func (s *session) Get(path string, params url.Values) (*http.Response, error) {
 	urlObj, _ := url.Parse(fmt.Sprintf("%s/%s", s.baseURL, path))
 	urlObj.RawQuery = params.Encode()
 
-	log.Printf("Querying %s\n", urlObj.String())
+	glog.V(8).Infof("Querying %s\n", urlObj.String())
 
 	return http.Get(urlObj.String())
 }
@@ -242,12 +243,8 @@ func (s *session) Post(path string, data url.Values) (*http.Response, error) {
 
 	targetURL := fmt.Sprintf("%s/%s", s.baseURL, path)
 
-	log.Printf("Postting %s: %#v\n", targetURL, data)
+	glog.V(8).Infof("Postting %s: %#v\n", targetURL, data)
 	return http.PostForm(targetURL, data)
-	/*
-	return http.PostForm(
-		"https://httpbin.org/post", data)
-	*/
 }
 
 /************************************************************
@@ -299,7 +296,7 @@ func (e *apiEntry) Get(method string, params url.Values) (map[string]*json.RawMe
 
 	var data responseData
 	if jsonErr := json.Unmarshal(body, &data); jsonErr != nil {
-		log.Printf("Failed to parse: %s", body)
+		glog.V(3).Infof("Failed to parse response: %s", body)
 		return nil, jsonErr
 	}
 
@@ -335,7 +332,7 @@ func (e *apiEntry) Post(method string, params url.Values) (map[string]*json.RawM
 
 	var data responseData
 	if jsonErr := json.Unmarshal(body, &data); jsonErr != nil {
-		log.Printf("Failed to parse: %s", body)
+		glog.V(3).Infof("Failed to parse: %s", body)
 		return nil, jsonErr
 	}
 

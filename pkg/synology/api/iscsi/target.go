@@ -19,12 +19,12 @@ package iscsi
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 
 	"encoding/json"
 	"net/url"
 
+	"github.com/golang/glog"
 	"github.com/jparklab/synology-csi/pkg/synology/core"
 )
 
@@ -167,7 +167,7 @@ func (t *targetAPI) List() ([]Target, error) {
 
 	var targets []Target 
 	if jsonErr := json.Unmarshal(*data["targets"], &targets); jsonErr != nil {
-		log.Printf("Failed to parse data: %s(%s)", *data["targets"], jsonErr)
+		glog.Errorf("Failed to parse target list: %s(%s)", *data["targets"], jsonErr)
 		return nil, jsonErr
 	}
 
@@ -187,7 +187,7 @@ func (t *targetAPI) Get(id int) (*Target, error) {
 
 	var target Target
 	if jsonErr := json.Unmarshal(*data["target"], &target); jsonErr != nil {
-		log.Printf("Failed to parse data: %s(%s)", *data["target"], jsonErr)
+		glog.Errorf("Failed to parse target: %s(%s)", *data["target"], jsonErr)
 		return nil, jsonErr
 	}
 

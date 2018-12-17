@@ -157,7 +157,7 @@ func (l *lunAPI) List() ([]Lun, error) {
 
 	var luns []Lun 
 	if jsonLunErr := json.Unmarshal(*data["luns"], &luns); jsonLunErr != nil {
-		glog.V(3).Infof("Failed to parse data: %s(%s)", *data["luns"], jsonLunErr)
+		glog.Errorf("Failed to parse Lun list: %s(%s)", *data["luns"], jsonLunErr)
 		return nil, jsonLunErr
 	}
 
@@ -178,7 +178,7 @@ func (l *lunAPI) Get(id string) (*Lun, error) {
 
 	var lun Lun 
 	if jsonLunErr := json.Unmarshal(*data["lun"], &lun); jsonLunErr != nil {
-		glog.V(3).Infof("Failed to parse data: %s(%s)", *data["lun"], jsonLunErr)
+		glog.Errorf("Failed to parse Lun: %s(%s)", *data["lun"], jsonLunErr)
 		return nil, jsonLunErr
 	}
 
