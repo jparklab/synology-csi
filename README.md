@@ -24,7 +24,10 @@ A Container Storage Interface Driver for Synology NAS
 ### Start plugin driver
 
     # You can specify any name for nodeid
-    $ go run cmd/syno-csi-plugin/main.go --nodeid CSINode --endpoint tcp://127.0.0.1:10000 --synology-config syno-config.yml 
+    $ go run cmd/syno-csi-plugin/main.go \
+        --nodeid CSINode \
+        --endpoint tcp://127.0.0.1:10000 \
+        --synology-config syno-config.yml 
 
 ### Get plugin info
 
@@ -32,7 +35,10 @@ A Container Storage Interface Driver for Synology NAS
 
 ### Create a volume
 
-    $ csc controller create-volume --req-bytes 2147483648 -e tcp://127.0.0.1:10000 test-volume 
+    $ csc controller create-volume \
+        --req-bytes 2147483648 \
+        -e tcp://127.0.0.1:10000 \
+        test-volume 
     "8.1"	2147483648	"iqn"="iqn.2000-01.com.synology:kube-csi-test-volume"	"mappingIndex"="1"	"targetID"="8"	
 
 ### List volumes
