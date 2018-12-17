@@ -71,3 +71,7 @@ A Container Storage Interface Driver for Synology NAS
     sessionName: Core       # You won't need to touch this value
     sslVerify: false        # set this true to use https
 
+### Create a k8s secret from the config file
+
+    kubectl create secret generic synology-config --from-file=syno-config.yml
+
