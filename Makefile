@@ -29,3 +29,6 @@ all: synology-csi-driver
 synology-csi-driver:
 	mkdir -p bin
 	GO111MODULE=on GOOS=linux go build -a -ldflags '-X main.version=$(REV) -extldflags "-static"' -o ./bin/synology-csi-driver ./cmd/syno-csi-plugin
+
+test:
+	GO111MODULE=on go test ./...
