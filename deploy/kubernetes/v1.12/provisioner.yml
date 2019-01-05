@@ -24,14 +24,14 @@ roleRef:
 kind: StatefulSet
 apiVersion: apps/v1beta1
 metadata:
-  name: csi-synology-provisioner
+  name: synology-csi-provisioner
 spec:
-  serviceName: "csi-synology-provisioner"
+  serviceName: "synology-csi-provisioner"
   replicas: 1
   template:
     metadata:
       labels:
-        app: csi-synology-provisioner
+        app: synology-csi-provisioner
     spec:
       serviceAccount: csi-provisioner-sa
       containers:

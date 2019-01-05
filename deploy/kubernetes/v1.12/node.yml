@@ -46,15 +46,15 @@ roleRef:
 kind: DaemonSet
 apiVersion: apps/v1beta2
 metadata:
-  name: csi-synology-node
+  name: synology-csi-node
 spec:
   selector:
     matchLabels:
-      app: csi-synology-node
+      app: synology-csi-node
   template:
     metadata:
       labels:
-        app: csi-synology-node
+        app: synology-csi-node
     spec:
       serviceAccount: csi-node-sa
       hostNetwork: true
