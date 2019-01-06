@@ -78,3 +78,6 @@ A Container Storage Interface Driver for Synology NAS
 ### Deploy to kubernetes
 
     kubectl apply -f deploy/kubernetes/v1.12
+
+    (v1.13 has not been tested yet)
+
