@@ -63,10 +63,14 @@ spec:
           securityContext:
             privileged: true
           imagePullPolicy: Always
-          image: quay.io/k8scsi/driver-registrar:v1.0.0
+          image: quay.io/k8scsi/driver-registrar:v0.4.1
           args:
             - --v=5
             - --csi-address=$(ADDRESS)
+            - --mode=node-register
+            - --driver-requires-attachment=true
+            - --pod-info-mount-version="v1"
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/csi.synology.com/csi.sock
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -77,11 +81,13 @@ spec:
           volumeMounts:
             - name: plugin-dir
               mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
         - name: csi-plugin
           securityContext:
             privileged: true
           imagePullPolicy: Always
-          image: jparklab/synology-csi:v1.0.0
+          image: jparklab/synology-csi:v0.4.1
           args:
             - --nodeid=$(KUBE_NODE_NAME)
             - --endpoint=$(CSI_ENDPOINT)
@@ -113,7 +119,7 @@ spec:
           securityContext:
             privileged: true
           imagePullPolicy: Always
-          image: jparklab/synology-csi:v1.0.0
+          image: jparklab/synology-csi:v0.4.1
           command:
             - iscsid
             - -f
@@ -134,6 +140,10 @@ spec:
           hostPath:
             path: /var/lib/kubelet/plugins/csi.synology.com/
             type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins
+            type: Directory
         - name: device-dir
           hostPath:
             path: /dev
