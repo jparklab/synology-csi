@@ -1,4 +1,4 @@
-# synology-csi  [![Build Status](https://dev.azure.com/jparklab/synology-csi/_apis/build/status/jparklab.synology-csi?branchName=master)](https://dev.azure.com/jparklab/synology-csi/_build/latest?definitionId=2&branchName=master)
+# synology-csi  [![Build Status](https://dev.azure.com/jparklab/synology-csi/_apis/build/status/jparklab.synology-csi?branchName=master)](https://dev.azure.com/jparklab/synology-csi/_build/latest?definitionId=2&branchName=master) [![Go Report Card](https://goreportcard.com/badge/github.com/jparklab/synology-csi)](https://goreportcard.com/report/github.com/jparklab/synology-csi)
 
 A Container Storage Interface Driver for Synology NAS 
 
