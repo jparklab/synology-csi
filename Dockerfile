@@ -19,7 +19,7 @@
 #
 
 # build stage
-FROM golang:1.11.1-stretch as builder
+FROM golang:1.12.6-stretch as builder
 WORKDIR /go/src/github.com/jparklab/synology-csi
 ADD . .
 RUN make 
