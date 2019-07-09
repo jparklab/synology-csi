@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Ji-Young Park(jiyoung.park.dev@gmail.com)
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,9 +17,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
-	"flag"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -32,10 +32,10 @@ func main() {
 	runOptions := options.NewRunOptions()
 
 	rootCmd := &cobra.Command{
-		Use: "synology-csi-plugin",
+		Use:  "synology-csi-plugin",
 		Long: "Synology CSI(Container Storage Interface) plugin",
 		Run: func(cmd *cobra.Command, args []string) {
-			flag.CommandLine.Parse([]string{ "-v", "8", "--logtostderr=1" })
+			flag.CommandLine.Parse([]string{"-v", "8", "--logtostderr=1"})
 
 			endpoint := runOptions.Endpoint
 			nodeID := runOptions.NodeID

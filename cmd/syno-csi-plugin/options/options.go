@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Ji-Young Park(jiyoung.park.dev@gmail.com)
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,15 +31,15 @@ import (
 
 // RunOptions stores option values
 type RunOptions struct {
-	NodeID string
-	Endpoint string
+	NodeID       string
+	Endpoint     string
 	SynologyConf string
 }
 
 // NewRunOptions creates a default option object
 func NewRunOptions() *RunOptions {
 	return &RunOptions{
-		NodeID: "CSINode",
+		NodeID:   "CSINode",
 		Endpoint: "unix:///var/lib/kubelet/plugins/" + driver.DriverName + "/csi.sock",
 	}
 }
