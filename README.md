@@ -1,6 +1,6 @@
 # synology-csi  [![Build Status](https://dev.azure.com/jparklab/synology-csi/_apis/build/status/jparklab.synology-csi?branchName=master)](https://dev.azure.com/jparklab/synology-csi/_build/latest?definitionId=2&branchName=master) [![Go Report Card](https://goreportcard.com/badge/github.com/jparklab/synology-csi)](https://goreportcard.com/report/github.com/jparklab/synology-csi)
 
-A Container Storage Interface Driver for Synology NAS 
+A [Container Storage Interface](https://github.com/container-storage-interface) Driver for Synology NAS
 
 ## Build
 
@@ -13,9 +13,14 @@ A Container Storage Interface Driver for Synology NAS
     # e.g. docker build -t jparklab/synology-csi .
     docker build -t <repo>[:<tag>] .
 
+  Build a docker image using ubuntu stretch as the base image.
+
+    # e.g. docker build -f Dockerfile.ubuntu -t jparklab/synology-csi .
+    e.g. docker build -f Dockerfile.ubuntu -t <repo>[:tag>] .
+
 ## Test
 
-  Here we use [gocsi](https://github.com/rexray/gocsi) to test the driver, 
+  Here we use [gocsi](https://github.com/rexray/gocsi) to test the driver,
 
 ### Create a config file for testing
 
@@ -39,14 +44,14 @@ A Container Storage Interface Driver for Synology NAS
         --req-bytes 2147483648 \
         -e tcp://127.0.0.1:10000 \
         test-volume 
-    "8.1"	2147483648	"iqn"="iqn.2000-01.com.synology:kube-csi-test-volume"	"mappingIndex"="1"	"targetID"="8"	
+    "8.1" 2147483648 "iqn"="iqn.2000-01.com.synology:kube-csi-test-volume" "mappingIndex"="1" "targetID"="8"
 
 ### List volumes
 
     The first column in the output is the volume D
 
     $ csc controller list-volumes -e tcp://127.0.0.1:10000 
-    "8.1"	2147483648	"iqn"="iqn.2000-01.com.synology:kube-csi-test-volume"	"mappingIndex"="1"	"targetID"="8"	
+    "8.1" 2147483648 "iqn"="iqn.2000-01.com.synology:kube-csi-test-volume" "mappingIndex"="1" "targetID"="8"
 
 ### Delete the volume
 
@@ -58,7 +63,9 @@ A Container Storage Interface Driver for Synology NAS
 
 ### Ensure kubernetes cluster is configured for CSI drivers
 
-   You can follow instructions on https://kubernetes-csi.github.io/docs/Setup.html to set up your kubernetes cluster for CSI drivers.
+   For kubernetes v1.12, and v1.13, feature gates need to be enabled to use CSI drivers.
+   Follow instructions on https://kubernetes-csi.github.io/docs/csi-driver-object.html and https://kubernetes-csi.github.io/docs/csi-node-object.html
+   to set up your kubernetes cluster.
 
 ### Create a config file <a name='config'></a>
 
@@ -77,7 +84,11 @@ A Container Storage Interface Driver for Synology NAS
 
 ### Deploy to kubernetes
 
-    kubectl apply -f deploy/kubernetes/v1.12
+    kubectl apply -f deploy/kubernetes/v1.15
 
-    (v1.13 has not been tested yet)
+    (v1.12 is also tested, v1.13 has not been tested)
 
+    NOTE:
+
+      synology-csi-attacher and synology-csi-provisioner need to run on the same node.
+     (probably..)

@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Ji-Young Park(jiyoung.park.dev@gmail.com)
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,13 +26,12 @@ import (
 
 	"github.com/golang/glog"
 
-	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"golang.org/x/net/context"
 
 	"k8s.io/kubernetes/pkg/util/mount"
-	"k8s.io/kubernetes/pkg/volume/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -42,14 +41,14 @@ import (
 
 const (
 	probeDeviceInterval = 1 * time.Second
-	probeDeviceTimeout = 60 * time.Second
+	probeDeviceTimeout  = 60 * time.Second
 )
 
 type nodeServer struct {
 	*csicommon.DefaultNodeServer
 
 	targetAPI iscsi.TargetAPI
-	lunAPI iscsi.LunAPI
+	lunAPI    iscsi.LunAPI
 
 	iscsiDrv iscsiDriver
 }
@@ -59,11 +58,11 @@ func getDevicePath(targetDevPath string) string {
 
 	if entries, err := ioutil.ReadDir(diskDevPath); err == nil {
 		for _, f := range entries {
-			// example: 
+			// example:
 			//    ip-192.168.1.196:3260-iscsi-iqn.2000-01.com.synology:JPNAS02.Target-23.cf8d920aa9-lun-1
 			glog.V(5).Info(f.Name())
 			if strings.Index(f.Name(), targetDevPath) != -1 {
-				return  strings.Join([]string{ diskDevPath, f.Name() }, "/")
+				return strings.Join([]string{diskDevPath, f.Name()}, "/")
 			}
 		}
 	}
@@ -79,18 +78,18 @@ func probeDevice(targetDevPath string) (string, error) {
 
 	for {
 		select {
-		case <- ticker.C:
+		case <-ticker.C:
 			if devicePath := getDevicePath(targetDevPath); devicePath != "" {
 				return devicePath, nil
 			}
-		case <- timer.C:
+		case <-timer.C:
 			return "", fmt.Errorf("Timed out while waiting for device for %s", targetDevPath)
 
 		}
 	}
 }
 
-// NodePublishVolume mounts the volume to target path 
+// NodePublishVolume mounts the volume to target path
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	volID := req.GetVolumeId()
 	targetPath := req.GetTargetPath()
@@ -126,7 +125,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	defer func() {
-		// logout target when we fail to mount 
+		// logout target when we fail to mount
 		if err != nil {
 			ns.iscsiDrv.logout(target)
 		}
@@ -145,15 +144,15 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	glog.V(5).Infof("Target path: %s", targetPath)
 
 	/*
-	notMnt, err := isLikelyNotMountPointAttach(targetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+		notMnt, err := isLikelyNotMountPointAttach(targetPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	*/
 	notMnt := true
 
 	if notMnt {
-		exists, err := util.PathExists(devicePath)
+		exists, err := mount.PathExists(devicePath)
 		if !exists || err != nil {
 			msg := fmt.Sprintf("Could not find ISCSI device: %s", devicePath)
 			glog.V(3).Info(msg)
@@ -163,10 +162,10 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		// mount device to the target path
 		mounter := &mount.SafeFormatAndMount{
 			Interface: mount.New(""),
-			Exec: mount.NewOsExec(),
+			Exec:      mount.NewOsExec(),
 		}
 
-		options := []string{ "rw" }
+		options := []string{"rw"}
 		mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
 		options = append(options, mountFlags...)
 
@@ -210,13 +209,12 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	/*
-	notMnt, err := isLikelyNotMountPointDetach(targetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+		notMnt, err := isLikelyNotMountPointDetach(targetPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	*/
 	notMnt := false
-
 
 	if notMnt {
 		msg := fmt.Sprintf("Path %s not mounted", targetPath)
@@ -225,9 +223,9 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	mounter := &mount.SafeFormatAndMount{
-			Interface: mount.New(""),
-			Exec: mount.NewOsExec(),
-		}
+		Interface: mount.New(""),
+		Exec:      mount.NewOsExec(),
+	}
 
 	if err = mounter.Unmount(targetPath); err != nil {
 		msg := fmt.Sprintf("Failed to unmount %s: %v", targetPath, err)
@@ -248,7 +246,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-// NodeStageVolume temporarily mounts the volume to a staging path 
+// NodeStageVolume temporarily mounts the volume to a staging path
 func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	// No staging is necessary since we do not share volumes
 	return &csi.NodeStageVolumeResponse{}, nil
