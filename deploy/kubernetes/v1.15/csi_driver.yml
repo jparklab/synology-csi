@@ -1,0 +1,13 @@
+---
+apiVersion: storage.k8s.io/v1beta1
+kind: CSIDriver
+metadata:
+  name: csi.synology.com
+spec:
+  # Attach operation in Synology CSI driver is no-op at this moment
+  # and volume is attached to the node by node driver.
+  # However, set this value to true so that we do not need
+  # to change the value when we separate attach operation
+  # to attacher in the future
+  attachRequired: true
+  podInfoOnMount: true
