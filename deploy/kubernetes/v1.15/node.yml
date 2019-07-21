@@ -91,8 +91,7 @@ spec:
           securityContext:
             privileged: true
           imagePullPolicy: Always
-          # image: jparklab/synology-csi:v1.0.0
-          image: registry.parkjiyoung.com:23000/jparklab/synology-csi:v1.0.0-kubernetes-1.14.0
+          image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.0
           args:
             - --nodeid=$(KUBE_NODE_NAME)
             - --endpoint=$(CSI_ENDPOINT)
@@ -124,8 +123,7 @@ spec:
           securityContext:
             privileged: true
           imagePullPolicy: Always
-          image: registry.parkjiyoung.com:23000/jparklab/synology-csi:v1.0.0-kubernetes-1.14.0
-          # image: jparklab/synology-csi:v1.0.0
+          image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.0
           command:
             - iscsid
             - -f
