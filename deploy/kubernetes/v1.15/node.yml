@@ -116,27 +116,11 @@ spec:
               mountPath: /dev
             - name: sys-dir
               mountPath: /sys
+            - name: lib-modules
+              mountPath: /lib/modules
             - name: synology-config
               mountPath: /etc/synology
               readOnly: true
-        - name: iscsid
-          securityContext:
-            privileged: true
-          imagePullPolicy: Always
-          image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.0
-          command:
-            - iscsid
-            - -f
-            - -d
-            - "7"
-          volumeMounts:
-            - name: kubelet-dir
-              mountPath: /var/lib/kubelet
-              mountPropagation: "Bidirectional"
-            - name: device-dir
-              mountPath: /dev
-            - name: sys-dir
-              mountPath: /sys
       volumes:
         - name: kubelet-dir
           hostPath:
@@ -157,6 +141,10 @@ spec:
         - name: sys-dir
           hostPath:
             path: /sys
+            type: Directory
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
             type: Directory
         - name: synology-config
           secret:
