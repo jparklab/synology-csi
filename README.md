@@ -2,6 +2,10 @@
 
 A [Container Storage Interface](https://github.com/container-storage-interface) Driver for Synology NAS
 
+## Platforms supported
+
+ The driver supports linux only since it requires iscsid to be running on the host. It is currently tested with Ubuntu 16.04 and 18.04
+
 ## Build
 
 ### Build package
