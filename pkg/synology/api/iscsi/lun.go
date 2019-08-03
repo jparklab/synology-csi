@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Ji-Young Park(jiyoung.park.dev@gmail.com)
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,20 +28,19 @@ import (
 	"github.com/jparklab/synology-csi/pkg/synology/core"
 )
 
-
 const (
 
 	// NOTE(jpark)
 	//	following types are extracted from the captured request
 	//  using google chrome
 
-	LunTypeBlock = "BLOCK"
-	LunTypeFile = "FILE"
-	LunTypeThin = "THIN"
-	LunTypeAdv = "ADV"
-	LunTypeSink = "SINK"
-	LunTypeCinder = "CINDER"
-	LunTypeCinderBLUN = "CINDER_BLUN"
+	LunTypeBlock           = "BLOCK"
+	LunTypeFile            = "FILE"
+	LunTypeThin            = "THIN"
+	LunTypeAdv             = "ADV"
+	LunTypeSink            = "SINK"
+	LunTypeCinder          = "CINDER"
+	LunTypeCinderBLUN      = "CINDER_BLUN"
 	LunTypeCinderBLUNThick = "CINDER_BLUN_THICK"
 
 	// LunTypeBlun is used for thin provision
@@ -49,16 +48,14 @@ const (
 	LunTypeBlun = "BLUN"
 	// LunTypeBlunThick is used for no thin provision
 	// This type is mapped to type 259
-	LunTypeBlunThick = "BLUN_THICK"
-	LunTypeBlunSink = "BLUN_SINK"
+	LunTypeBlunThick     = "BLUN_THICK"
+	LunTypeBlunSink      = "BLUN_SINK"
 	LunTypeBlunThickSink = "BLUN_THICK_SINK"
-
-
 )
 
 var (
 	// AdditionalLunFields contains list of additional fields to query
-	AdditionalLunFields = []string {
+	AdditionalLunFields = []string{
 		"is_action_locked",
 		"is_mapped",
 		"extent_size",
@@ -102,18 +99,18 @@ var (
 	"uuid": "fd993a34-15ba-44e6-a60c-62d17a3430c8",
 	"vpd_unit_sn": "fd993a34-15ba-44e6-a60c-62d17a3430c8"
   }
-  */
+*/
 
 type Lun struct {
-	Location string `json:"location"`
-	LunID int `json:"lun_id"`
-	Name string `json:"name"`
-	Size int64 `json:"size"`
-	Type interface{} `json:"type"`		// type can be either int or string
-	UUID string `json:"uuid"`
+	Location string      `json:"location"`
+	LunID    int         `json:"lun_id"`
+	Name     string      `json:"name"`
+	Size     int64       `json:"size"`
+	Type     interface{} `json:"type"` // type can be either int or string
+	UUID     string      `json:"uuid"`
 
-	IsMapped bool `json:"is_mapped"`
-	Status string `json:"status"`
+	IsMapped bool   `json:"is_mapped"`
+	Status   string `json:"status"`
 }
 
 /*************************************************************
@@ -124,10 +121,10 @@ type LunAPI interface {
 	List() ([]Lun, error)
 	Get(id string) (*Lun, error)
 	Create(
-		name string, 			// name of the volume
-		location string, 		// location(e.g. /volume1)
-		size int64, 			// size of the volume(in bytes)
-		volType string,			// type of the volume, see LunType for available types
+		name string, // name of the volume
+		location string, // location(e.g. /volume1)
+		size int64, // size of the volume(in bytes)
+		volType string, // type of the volume, see LunType for available types
 	) (*Lun, error)
 	Delete(id string) error
 }
@@ -149,13 +146,13 @@ func (l *lunAPI) List() ([]Lun, error) {
 	additional, _ := json.Marshal(AdditionalLunFields)
 
 	data, err := l.apiEntry.Get("list", url.Values{
-		"additional": { string(additional) },
+		"additional": {string(additional)},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	var luns []Lun 
+	var luns []Lun
 	if jsonLunErr := json.Unmarshal(*data["luns"], &luns); jsonLunErr != nil {
 		glog.Errorf("Failed to parse Lun list: %s(%s)", *data["luns"], jsonLunErr)
 		return nil, jsonLunErr
@@ -168,15 +165,15 @@ func (l *lunAPI) List() ([]Lun, error) {
 func (l *lunAPI) Get(id string) (*Lun, error) {
 	additional, _ := json.Marshal(AdditionalLunFields)
 
-	data, err := l.apiEntry.Get("get", url.Values{ 
-		"uuid": { fmt.Sprintf("\"%s\"", id) },
-		"additional": { string(additional) },
+	data, err := l.apiEntry.Get("get", url.Values{
+		"uuid":       {fmt.Sprintf("\"%s\"", id)},
+		"additional": {string(additional)},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	var lun Lun 
+	var lun Lun
 	if jsonLunErr := json.Unmarshal(*data["lun"], &lun); jsonLunErr != nil {
 		glog.Errorf("Failed to parse Lun: %s(%s)", *data["lun"], jsonLunErr)
 		return nil, jsonLunErr
@@ -192,10 +189,10 @@ func (l *lunAPI) Create(
 	volType string,
 ) (*Lun, error) {
 	data, err := l.apiEntry.Post("create", url.Values{
-		"name": { name },
-		"location": { location },
-		"type": { volType },
-		"size": { fmt.Sprintf("%d", size) },
+		"name":     {name},
+		"location": {location},
+		"type":     {volType},
+		"size":     {fmt.Sprintf("%d", size)},
 	})
 
 	if err != nil {
@@ -212,8 +209,8 @@ func (l *lunAPI) Create(
 }
 
 func (l *lunAPI) Delete(id string) error {
-	_, err := l.apiEntry.Post("delete", url.Values{ 
-		"uuid": { fmt.Sprintf("\"%s\"", id) },
+	_, err := l.apiEntry.Post("delete", url.Values{
+		"uuid": {fmt.Sprintf("\"%s\"", id)},
 	})
 
 	return err

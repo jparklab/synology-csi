@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Ji-Young Park(jiyoung.park.dev@gmail.com)
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
- package core
+package core
 
- import (
+import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -29,8 +29,8 @@
 /************************************************************
  * Tests
  ************************************************************/
- // Tests if a request failes if the session is not logged in
- func TestSessionNotLoggedIn(t *testing.T) {
+// Tests if a request failes if the session is not logged in
+func TestSessionNotLoggedIn(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		resp.Write([]byte(""))
 	}))
@@ -49,9 +49,10 @@ func TestSessionLogin(t *testing.T) {
 		params := req.URL.Query()
 
 		switch req.URL.Path {
-			case "/webapi/auth.cgi": {
+		case "/webapi/auth.cgi":
+			{
 				method := params.Get("method")
-				if (method == "login") {
+				if method == "login" {
 					resp.Write([]byte(`{
 						"data": { "sid": "test_sid" },
 						"success": true
@@ -84,9 +85,10 @@ func TestAPIEntry(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		params := req.URL.Query()
 		switch req.URL.Path {
-			case "/webapi/auth.cgi": {
+		case "/webapi/auth.cgi":
+			{
 				method := params.Get("method")
-				if (method == "login") {
+				if method == "login" {
 					resp.Write([]byte(fmt.Sprintf(`{
 						"data": { "sid": "%s" },
 						"success": true
@@ -98,7 +100,8 @@ func TestAPIEntry(t *testing.T) {
 					}`))
 				}
 			}
-			case "/webapi/entry.cgi": {
+		case "/webapi/entry.cgi":
+			{
 				assert.Equal(t, "TestAPI", params.Get("api"))
 				assert.Equal(t, sid, params.Get("_sid"))
 
@@ -121,7 +124,7 @@ func TestAPIEntry(t *testing.T) {
 	api := NewAPIEntry(s, "entry.cgi", "TestAPI", "1")
 
 	resp, err := api.Get("list", url.Values{
-		"name": { "sample" },
+		"name": {"sample"},
 	})
 
 	assert.NoError(t, err)

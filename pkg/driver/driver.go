@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Ji-Young Park(jiyoung.park.dev@gmail.com)
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,17 +38,17 @@ const (
 
 // SynologyOptions contains options to access synology NAS web api
 type SynologyOptions struct {
-	Host string			`yaml:"host"`
-	Port int			`yaml:"port"`
-	Username string		`yaml:"username"`
-	Password string		`yaml:"password"`
-	SessionName string	`yaml:"sessionName"`
-	SslVerify bool		`yaml:"sslVerify"`
+	Host        string `yaml:"host"`
+	Port        int    `yaml:"port"`
+	Username    string `yaml:"username"`
+	Password    string `yaml:"password"`
+	SessionName string `yaml:"sessionName"`
+	SslVerify   bool   `yaml:"sslVerify"`
 }
 
 // Driver is top interface to run server
 type Driver interface {
-	Run() 
+	Run()
 }
 
 type driver struct {
@@ -57,8 +57,7 @@ type driver struct {
 	endpoint string
 
 	synologyHost string
-	session core.Session
-
+	session      core.Session
 }
 
 // NewDriver creates a Driver object
@@ -66,14 +65,14 @@ func NewDriver(nodeID string, endpoint string, synoOption *SynologyOptions) (Dri
 	glog.Infof("Driver: %v", DriverName)
 
 	var proto = "http"
-	if (synoOption.SslVerify) {
+	if synoOption.SslVerify {
 		proto = "https"
 	}
-	
+
 	synoAPIUrl := fmt.Sprintf(
 		"%s://%s:%d/webapi", proto,
 		synoOption.Host, synoOption.Port)
-	
+
 	glog.V(1).Infof("Use synology: %s", synoAPIUrl)
 
 	session := core.NewSession(synoAPIUrl, synoOption.SessionName)
@@ -84,9 +83,9 @@ func NewDriver(nodeID string, endpoint string, synoOption *SynologyOptions) (Dri
 	}
 
 	d := &driver{
-		endpoint: endpoint,
+		endpoint:     endpoint,
 		synologyHost: synoOption.Host,
-		session: session,
+		session:      session,
 	}
 
 	csiDriver := csicommon.NewCSIDriver(DriverName, version, nodeID)
@@ -112,16 +111,16 @@ func newControllerServer(d *driver) *controllerServer {
 	glog.V(3).Infof("Create controller: %v", d.csiDriver)
 	return &controllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d.csiDriver),
-		lunAPI: iscsi.NewLunAPI(d.session),
-		targetAPI: iscsi.NewTargetAPI(d.session),
+		lunAPI:                  iscsi.NewLunAPI(d.session),
+		targetAPI:               iscsi.NewTargetAPI(d.session),
 	}
 }
 
 func newNodeServer(d *driver) *nodeServer {
 	return &nodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d.csiDriver),
-		lunAPI: iscsi.NewLunAPI(d.session),
-		targetAPI: iscsi.NewTargetAPI(d.session),
-		iscsiDrv: iscsiDriver{ synologyHost: d.synologyHost },
+		lunAPI:            iscsi.NewLunAPI(d.session),
+		targetAPI:         iscsi.NewTargetAPI(d.session),
+		iscsiDrv:          iscsiDriver{synologyHost: d.synologyHost},
 	}
 }

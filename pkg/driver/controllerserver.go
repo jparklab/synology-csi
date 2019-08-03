@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Ji-Young Park(jiyoung.park.dev@gmail.com)
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,8 +22,8 @@ import (
 
 	"github.com/golang/glog"
 
-	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
@@ -31,17 +31,16 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 
-
 	"github.com/jparklab/synology-csi/pkg/synology/api/iscsi"
 )
 
 const (
 	defaultVolumeSize = int64(1 * 1024 * 1024 * 1024)
-	defaultLocation = "/volume1"
+	defaultLocation   = "/volume1"
 	defaultVolumeType = iscsi.LunTypeBlun
 
 	targetNamePrefix = "kube-csi"
-	lunNamePrefix = "kube-csi"
+	lunNamePrefix    = "kube-csi"
 
 	iqnPrefix = "iqn.2000-01.com.synology:kube-csi"
 )
@@ -49,7 +48,7 @@ const (
 type controllerServer struct {
 	*csicommon.DefaultControllerServer
 	targetAPI iscsi.TargetAPI
-	lunAPI iscsi.LunAPI
+	lunAPI    iscsi.LunAPI
 }
 
 // CreateVolume creates a LUN and a target for a volume
@@ -92,7 +91,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			"Volume %s already exists, found LUN %s", volName, lunName,
 		)
 	}
-
 
 	// create a lun
 	newLun, err := cs.lunAPI.Create(
@@ -152,7 +150,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// map lun
 	err = cs.targetAPI.MapLun(
-		newTarget.TargetID, []string{ newLun.UUID })
+		newTarget.TargetID, []string{newLun.UUID})
 	if err != nil {
 		msg := fmt.Sprintf(
 			"Failed to map LUN %s(%s) to target %s(%d): %v",
@@ -166,11 +164,11 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			VolumeId: makeVolumeID(newTarget.TargetID, 1),
+			VolumeId:      makeVolumeID(newTarget.TargetID, 1),
 			CapacityBytes: volSizeByte,
 			VolumeContext: map[string]string{
-				"targetID": fmt.Sprintf("%d", newTarget.TargetID),
-				"iqn": newTarget.IQN,
+				"targetID":     fmt.Sprintf("%d", newTarget.TargetID),
+				"iqn":          newTarget.IQN,
 				"mappingIndex": "1",
 			},
 		},
@@ -201,7 +199,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.FailedPrecondition, msg)
 	}
 
-	mapping := target.MappedLuns[mappingIndex - 1]
+	mapping := target.MappedLuns[mappingIndex-1]
 	lun, err := cs.lunAPI.Get(mapping.LunUUID)
 	if err != nil {
 		msg := fmt.Sprintf(
@@ -212,7 +210,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	// unmap lun
-	err = cs.targetAPI.UnmapLun(target.TargetID, []string{ lun.UUID })
+	err = cs.targetAPI.UnmapLun(target.TargetID, []string{lun.UUID})
 	if err != nil {
 		msg := fmt.Sprintf(
 			"Failed to unmap LUN %s(%s) to target %s(%d): %v",
@@ -291,11 +289,11 @@ func (cs *controllerServer) ListVolumes(ctx context.Context, req *csi.ListVolume
 
 			entry := csi.ListVolumesResponse_Entry{
 				Volume: &csi.Volume{
-					VolumeId: fmt.Sprintf("%d.%d", t.TargetID, mapping.MappingIndex),
+					VolumeId:      fmt.Sprintf("%d.%d", t.TargetID, mapping.MappingIndex),
 					CapacityBytes: lun.Size,
 					VolumeContext: map[string]string{
-						"targetID": fmt.Sprintf("%d", t.TargetID),
-						"iqn": t.IQN,
+						"targetID":     fmt.Sprintf("%d", t.TargetID),
+						"iqn":          t.IQN,
 						"mappingIndex": fmt.Sprintf("%d", mapping.MappingIndex),
 					},
 				},

@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Ji-Young Park(jiyoung.park.dev@gmail.com)
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,7 +39,7 @@ const (
 
 var (
 	// AdditionalTargetFields contains list of additional fields to query
-	AdditionalTargetFields = []string {
+	AdditionalTargetFields = []string{
 		"acls",
 		"connected_sessions",
 		"mapped_lun",
@@ -49,9 +49,9 @@ var (
 
 /*************************************************************
  * Target Object
- * 
+ *
  * An example target object(TODO: move to test)
- * 
+ *
  *
 	{
 	"acls": [
@@ -96,29 +96,26 @@ var (
 
 // Target represents a target object
 type Target struct {
+	Name     string `json:"name"`
+	IQN      string `json:"iqn"`
+	TargetID int    `json:"target_id"`
 
-	Name string `json:"name"`
-	IQN string `json:"iqn"`
-	TargetID int `json:"target_id"`
-
-	AuthType int `json:"auth_type"`
-	User string `json:"user"`
-	Password string `json:"password"`
-	MutualUser string `json:"mutual_user"`
+	AuthType       int    `json:"auth_type"`
+	User           string `json:"user"`
+	Password       string `json:"password"`
+	MutualUser     string `json:"mutual_user"`
 	MutualPassword string `json:"mutual_password"`
 
-
 	MappedLuns []struct {
-		LunUUID string `json:"lun_uuid"`
-		MappingIndex int `json:"mapping_index"`
+		LunUUID      string `json:"lun_uuid"`
+		MappingIndex int    `json:"mapping_index"`
 	} `json:"mapped_luns"`
 
-	MaxSessions int `json:"max_sessions"`
-	IsEnabled bool `json:"is_enabled"`
-	Status string `json:"status"`
+	MaxSessions int    `json:"max_sessions"`
+	IsEnabled   bool   `json:"is_enabled"`
+	Status      string `json:"status"`
 }
 
- 
 /*************************************************************
  * API for Target
  *************************************************************/
@@ -128,18 +125,17 @@ type TargetAPI interface {
 	List() ([]Target, error)
 	Get(id int) (*Target, error)
 	Create(
-		name string,		// name of the target
-		iqn string,			// iqn
-		authType int,		// see TargetAuthType
-		user string,		// username, can be nil when authType is 0
-		password string,	// password, can be nil when authType is 0
+		name string, // name of the target
+		iqn string, // iqn
+		authType int, // see TargetAuthType
+		user string, // username, can be nil when authType is 0
+		password string, // password, can be nil when authType is 0
 	) (*Target, error)
 	Delete(id int) error
 
 	MapLun(targetID int, lunUUIDs []string) error
 	UnmapLun(targetID int, lunUUIDs []string) error
 }
-
 
 type targetAPI struct {
 	apiEntry core.APIEntry
@@ -154,18 +150,17 @@ func NewTargetAPI(s core.Session) TargetAPI {
 	}
 }
 
-
 func (t *targetAPI) List() ([]Target, error) {
 	additional, _ := json.Marshal(AdditionalTargetFields)
 
 	data, err := t.apiEntry.Get("list", url.Values{
-		"additional": { string(additional) },
+		"additional": {string(additional)},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	var targets []Target 
+	var targets []Target
 	if jsonErr := json.Unmarshal(*data["targets"], &targets); jsonErr != nil {
 		glog.Errorf("Failed to parse target list: %s(%s)", *data["targets"], jsonErr)
 		return nil, jsonErr
@@ -178,8 +173,8 @@ func (t *targetAPI) Get(id int) (*Target, error) {
 	additional, _ := json.Marshal(AdditionalTargetFields)
 
 	data, err := t.apiEntry.Get("get", url.Values{
-		"additional": { string(additional) },
-		"target_id": { fmt.Sprintf("\"%d\"", id) },
+		"additional": {string(additional)},
+		"target_id":  {fmt.Sprintf("\"%d\"", id)},
 	})
 	if err != nil {
 		return nil, err
@@ -203,9 +198,9 @@ func (t *targetAPI) Create(
 ) (*Target, error) {
 
 	params := url.Values{
-		"name": { name },
-		"iqn": { iqn },
-		"auth_type": { fmt.Sprintf("%d", authType) },
+		"name":      {name},
+		"iqn":       {iqn},
+		"auth_type": {fmt.Sprintf("%d", authType)},
 	}
 
 	if authType == TargetAuthTypeNone {
@@ -237,8 +232,8 @@ func (t *targetAPI) Create(
 }
 
 func (t *targetAPI) Delete(id int) error {
-	_, err := t.apiEntry.Post("delete", url.Values{ 
-		"target_id": { fmt.Sprintf("\"%d\"", id) },
+	_, err := t.apiEntry.Post("delete", url.Values{
+		"target_id": {fmt.Sprintf("\"%d\"", id)},
 	})
 
 	return err
@@ -246,8 +241,8 @@ func (t *targetAPI) Delete(id int) error {
 
 func (t *targetAPI) MapLun(targetID int, lunUUIDs []string) error {
 	_, err := t.apiEntry.Post("map_lun", url.Values{
-		"target_id": { fmt.Sprintf("\"%d\"", targetID) },
-		"lun_uuids": { fmt.Sprintf("[\"%s\"]", lunUUIDs[0]) },
+		"target_id": {fmt.Sprintf("\"%d\"", targetID)},
+		"lun_uuids": {fmt.Sprintf("[\"%s\"]", lunUUIDs[0])},
 	})
 
 	return err
@@ -256,8 +251,8 @@ func (t *targetAPI) UnmapLun(targetID int, lunUUIDs []string) error {
 	encodedUUIDs, _ := json.Marshal(lunUUIDs)
 
 	_, err := t.apiEntry.Post("unmap_lun", url.Values{
-		"target_id": { fmt.Sprintf("\"%d\"", targetID) },
-		"lun_uuids": { string(encodedUUIDs) },
+		"target_id": {fmt.Sprintf("\"%d\"", targetID)},
+		"lun_uuids": {string(encodedUUIDs)},
 	})
 
 	return err
