@@ -79,19 +79,6 @@ spec:
             - name: synology-config
               mountPath: /etc/synology
               readOnly: true
-
-#         - name: csi-cluster-driver-registrar
-#           image: quay.io/k8scsi/csi-cluster-driver-registrar:v1.0.1
-#           args:
-#             - "--v=5"
-#             - "--pod-info-mount-version=\"v1\""
-#             - "--csi-address=$(ADDRESS)"
-#           env:
-#             - name: ADDRESS
-#               value: /var/lib/csi/sockets/pluginproxy/csi.sock
-#           volumeMounts:
-#             - name: socket-dir
-#               mountPath: /var/lib/csi/sockets/pluginproxy/
       volumes:
         - name: socket-dir
           emptyDir: {}
