@@ -6,4 +6,8 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "true"
   name: synology-iscsi-storage
 provisioner: csi.synology.com
+# uncomment below if you want to use different values than the default values
+# parameters:
+#   location: '/volume1'
+#   type: 'BLUN'
 reclaimPolicy: Delete
