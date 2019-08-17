@@ -181,6 +181,13 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			return nil, status.Error(codes.Internal, msg)
 		}
 
+		// TODO(jpark):
+		// change owner of the root path:
+		// https://github.com/kubernetes/kubernetes/pull/62486
+		//	 https://github.com/kubernetes/kubernetes/pull/62486/files
+		// https://github.com/kubernetes/kubernetes/issues/66323
+		//	https://github.com/kubernetes/kubernetes/pull/67280/files
+
 		glog.V(5).Infof(
 			"Mounted %s to %s(fstype: %s, options: %v)",
 			devicePath, targetPath, fsType, options)

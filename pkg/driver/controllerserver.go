@@ -32,12 +32,14 @@ import (
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 
 	"github.com/jparklab/synology-csi/pkg/synology/api/iscsi"
+	"github.com/jparklab/synology-csi/pkg/synology/api/storage"
 )
 
 const (
-	defaultVolumeSize = int64(1 * 1024 * 1024 * 1024)
-	defaultLocation   = "/volume1"
-	defaultVolumeType = iscsi.LunTypeBlun
+	defaultVolumeSize      = int64(1 * 1024 * 1024 * 1024)
+	defaultLocation        = "/volume1"
+	defaultVolumeTypeExt4  = iscsi.LunTypeThin
+	defaultVolumeTypeBtrfs = iscsi.LunTypeBlun
 
 	targetNamePrefix = "kube-csi"
 	lunNamePrefix    = "kube-csi"
@@ -49,6 +51,7 @@ type controllerServer struct {
 	*csicommon.DefaultControllerServer
 	targetAPI iscsi.TargetAPI
 	lunAPI    iscsi.LunAPI
+	volumeAPI storage.VolumeAPI
 }
 
 // CreateVolume creates a LUN and a target for a volume
@@ -74,9 +77,35 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		location = defaultLocation
 	}
 
+	// check if location exists
+	volume, err := cs.volumeAPI.Get(location)
+	if err != nil {
+		volumes, listErr := cs.volumeAPI.List()
+		if listErr != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				fmt.Sprintf("Unable to list storage volumes: %v", listErr))
+		}
+
+		var locations []string
+		for _, vol := range volumes {
+			locations = append(locations, vol.VolumePath)
+		}
+
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			fmt.Sprintf("Unable to find location %s, valid locations: %v", location, locations))
+	}
+
+	glog.V(5).Infof("Found the volume for the location %s: %v", location, volume)
+
 	volType, present := params["type"]
 	if !present {
-		volType = defaultVolumeType
+		if volume.FSType == storage.FSTypeExt4 {
+			volType = defaultVolumeTypeExt4
+		} else if volume.FSType == storage.FSTypeBtrfs {
+			volType = defaultVolumeTypeBtrfs
+		}
 	}
 
 	lunName := fmt.Sprintf("%s-%s", lunNamePrefix, volName)

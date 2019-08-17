@@ -183,6 +183,8 @@ func (s *session) login() (string, error) {
 	now := time.Now()
 	s.lastLoginTime = &now
 
+	glog.Infof("Logged in. Timeout minute: %d", s.timeoutMinute)
+
 	return s.sid, nil
 }
 
