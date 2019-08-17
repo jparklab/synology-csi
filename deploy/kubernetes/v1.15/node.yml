@@ -91,7 +91,7 @@ spec:
           securityContext:
             privileged: true
           imagePullPolicy: Always
-          image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.0
+          image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.0-p1
           args:
             - --nodeid=$(KUBE_NODE_NAME)
             - --endpoint=$(CSI_ENDPOINT)
@@ -121,6 +121,8 @@ spec:
             - name: synology-config
               mountPath: /etc/synology
               readOnly: true
+            - name: iscsi
+              mountPath: /etc/iscsi
       volumes:
         - name: kubelet-dir
           hostPath:
@@ -145,6 +147,10 @@ spec:
         - name: lib-modules
           hostPath:
             path: /lib/modules
+            type: Directory
+        - name: iscsi
+          hostPath:
+            path: /etc/iscsi
             type: Directory
         - name: synology-config
           secret:
