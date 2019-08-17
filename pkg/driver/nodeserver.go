@@ -119,7 +119,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	// login
 	if err = ns.iscsiDrv.login(target); err != nil {
-		msg := fmt.Sprintf("Failed to run ISCSI discovery: %v", err)
+		msg := fmt.Sprintf("Failed to run ISCSI login: %v", err)
 		glog.V(3).Info(msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
