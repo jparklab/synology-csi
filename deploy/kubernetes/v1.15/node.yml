@@ -123,6 +123,8 @@ spec:
               readOnly: true
             - name: iscsi
               mountPath: /etc/iscsi
+            - name: iscsiadm
+              mountPath: /sbin/iscsiadm
       volumes:
         - name: kubelet-dir
           hostPath:
@@ -152,6 +154,10 @@ spec:
           hostPath:
             path: /etc/iscsi
             type: Directory
+        - name: iscsiadm
+          hostPath:
+            path: /sbin/iscsiadm
+            type: File
         - name: synology-config
           secret:
             secretName: synology-config
