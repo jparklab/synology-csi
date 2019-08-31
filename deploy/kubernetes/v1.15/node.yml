@@ -43,6 +43,16 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: synology-csi-iscsiadm
+data:
+  iscsiadm: |
+    #!/bin/bash
+    chroot /host /sbin/iscsiadm "$@"
+    
+---
 kind: DaemonSet
 apiVersion: apps/v1beta2
 metadata:
@@ -91,7 +101,7 @@ spec:
           securityContext:
             privileged: true
           imagePullPolicy: Always
-          image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.0-p1
+          image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.0-p2
           args:
             - --nodeid=$(KUBE_NODE_NAME)
             - --endpoint=$(CSI_ENDPOINT)
@@ -114,17 +124,14 @@ spec:
               mountPath: /csi
             - name: device-dir
               mountPath: /dev
-            - name: sys-dir
-              mountPath: /sys
-            - name: lib-modules
-              mountPath: /lib/modules
             - name: synology-config
               mountPath: /etc/synology
               readOnly: true
-            - name: iscsi
-              mountPath: /etc/iscsi
-            - name: iscsiadm
+            - name: host-root
+              mountPath: /host
+            - name: chroot-iscsiadm
               mountPath: /sbin/iscsiadm
+              subPath: iscsiadm
       volumes:
         - name: kubelet-dir
           hostPath:
@@ -142,22 +149,14 @@ spec:
           hostPath:
             path: /dev
             type: Directory
-        - name: sys-dir
+        - name: chroot-iscsiadm
+          configMap:
+            defaultMode: 0755
+            name: synology-csi-iscsiadm
+        - name: host-root
           hostPath:
-            path: /sys
+            path: /
             type: Directory
-        - name: lib-modules
-          hostPath:
-            path: /lib/modules
-            type: Directory
-        - name: iscsi
-          hostPath:
-            path: /etc/iscsi
-            type: Directory
-        - name: iscsiadm
-          hostPath:
-            path: /sbin/iscsiadm
-            type: File
         - name: synology-config
           secret:
             secretName: synology-config

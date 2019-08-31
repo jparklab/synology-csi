@@ -24,13 +24,13 @@ WORKDIR /go/src/github.com/jparklab/synology-csi
 ADD . .
 RUN make 
 
-FROM centos:7.4.1708
+FROM centos:7.6.1810
 LABEL maintainers="Kubernetes Authors"
 LABEL description="Synology CSI Plugin"
 
 # NOTE(jparklab):
 #   Install open-iscsi instead of iscsi-initiator-utils if base image is ubuntu or debian
-RUN yum install ca-certificates e2fsprogs util-linux iscsi-initiator-utils -y
+RUN yum install ca-certificates e2fsprogs xfsprogs util-linux -y
 
 # Install 'ip' tools
 RUN yum install iproute -y

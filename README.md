@@ -15,12 +15,7 @@ A [Container Storage Interface](https://github.com/container-storage-interface) 
 ## Build docker image
 
     # e.g. docker build -t jparklab/synology-csi .
-    docker build -t <repo>[:<tag>] .
-
-  Build a docker image using ubuntu stretch as the base image.
-
-    # e.g. docker build -f Dockerfile.ubuntu -t jparklab/synology-csi .
-    e.g. docker build -f Dockerfile.ubuntu -t <repo>[:tag>] .
+    docker build [-f Dockerfile] -t <repo>[:<tag>] .
 
 # Test
 
