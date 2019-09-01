@@ -117,19 +117,40 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, msg)
 	}
 
-	// login
-	if err = ns.iscsiDrv.login(target); err != nil {
-		msg := fmt.Sprintf("Failed to run ISCSI login: %v", err)
+    // check if we already have a session
+    sessions, err := ns.iscsiDrv.listSessions()
+    if err != nil {
+		msg := fmt.Sprintf(
+			"Unable to list existing sessions: %v", err)
 		glog.V(3).Info(msg)
 		return nil, status.Error(codes.Internal, msg)
-	}
+    }
 
-	defer func() {
-		// logout target when we fail to mount
-		if err != nil {
-			ns.iscsiDrv.logout(target)
-		}
-	}()
+    var hasSession = false
+    for _, sess := range(sessions) {
+        if sess.IQN == target.IQN {
+            hasSession = true
+            break
+        }
+    }
+
+    if hasSession {
+        glog.V(5).Infof("Found an existing session for %s", target.IQN)
+    } else {
+        // login
+        if err = ns.iscsiDrv.login(target); err != nil {
+            msg := fmt.Sprintf("Failed to run ISCSI login: %v", err)
+            glog.V(3).Info(msg)
+            return nil, status.Error(codes.Internal, msg)
+        }
+
+        defer func() {
+            // logout target when we fail to mount
+            if err != nil {
+				_ = ns.iscsiDrv.logout(target)
+            }
+        }()
+    } 
 
 	// find device mapped to the target
 	targetDevPath := fmt.Sprintf("%s-lun-%d", target.IQN, mappingIndex)
