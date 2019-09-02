@@ -16,11 +16,15 @@
 
 REV=v0.1.0
 
-all: synology-csi-driver
+all: synology-csi-driver synology-csi-driver-arm
 
 synology-csi-driver:
 	mkdir -p bin
 	GO111MODULE=on GOOS=linux go build -a -ldflags '-X main.version=$(REV) -extldflags "-static"' -o ./bin/synology-csi-driver ./cmd/syno-csi-plugin
+
+synology-csi-driver-arm:
+	mkdir -p bin
+	GO111MODULE=on GOOS=linux GOARCH=arm go build -a -ldflags '-X main.version=$(REV) -extldflags "-static"' -o ./bin/synology-csi-driver-arm ./cmd/syno-csi-plugin
 
 test:
 	GO111MODULE=on go test ./...
