@@ -47,6 +47,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: synology-csi-iscsiadm
+  namespace: synology-csi
 data:
   iscsiadm: |
     #!/bin/bash
@@ -57,6 +58,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: synology-csi-node
+  namespace: synology-csi
 spec:
   selector:
     matchLabels:

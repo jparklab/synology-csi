@@ -25,6 +25,7 @@ kind: StatefulSet
 apiVersion: apps/v1
 metadata:
   name: synology-csi-provisioner
+  namespace: synology-csi
 spec:
   serviceName: "synology-csi-provisioner"
   replicas: 1
