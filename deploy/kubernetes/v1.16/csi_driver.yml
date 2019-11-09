@@ -11,3 +11,5 @@ spec:
   # to attacher in the future
   attachRequired: true
   podInfoOnMount: true
+  volumeLifecycleModes:
+    - Persistent
