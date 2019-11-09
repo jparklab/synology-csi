@@ -19,6 +19,7 @@ package driver
 import (
 	"errors"
 	"fmt"
+    "regexp"
 	"strings"
 
 	"github.com/golang/glog"
@@ -31,6 +32,34 @@ type iscsiDriver struct {
 	synologyHost string
 }
 
+type Session struct {
+    IQN     string
+}
+
+/************************************************************
+ * helper functions
+ ************************************************************/
+func parseSessionOutput(output string) ([]Session) {
+    lines := strings.Split(output, "\n")
+    iqn_re, _ := regexp.Compile(".*(iqn.\\S+)\\s.*")
+
+    var sessions []Session
+    for _, line := range(lines) {
+        match := iqn_re.FindStringSubmatch(line)
+        if len(match) == 0 {
+            continue
+        }
+
+        iqn := match[1]
+        sessions = append(sessions, Session{iqn})
+    }
+
+	return sessions
+}
+
+/************************************************************
+ * iscsiDriver functions
+ ************************************************************/
 func (d *iscsiDriver) doISCSIDiscovery() error {
 	executor := utilexec.New()
 	cmdArgs := []string{
@@ -50,6 +79,23 @@ func (d *iscsiDriver) doISCSIDiscovery() error {
 	}
 
 	return nil
+}
+
+func (d *iscsiDriver) listSessions() ([]Session, error) {
+    executor := utilexec.New()
+    cmdArgs := []string{
+        "-m", "session",
+    }
+    cmd := executor.Command("iscsiadm", cmdArgs...)
+	glog.V(5).Infof("[EXECUTING] %s", strings.Join(cmdArgs, " "))
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		glog.V(3).Infof("Error running iscsiadm session: %v", err)
+		return nil, err
+	}
+
+    return parseSessionOutput(string(out)), nil
 }
 
 func (d *iscsiDriver) login(target *iscsi.Target) error {
