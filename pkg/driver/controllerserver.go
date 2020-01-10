@@ -114,90 +114,120 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// check if lun already exists
 	lun, err := cs.lunAPI.Get(lunName)
-	if lun != nil {
-		return nil, status.Errorf(
-			codes.AlreadyExists,
-			"Volume %s already exists, found LUN %s", volName, lunName,
+	if lun == nil {
+		// create a lun
+		newLun, err := cs.lunAPI.Create(
+			lunName,
+			location,
+			volSizeByte,
+			volType,
 		)
-	}
 
-	// create a lun
-	newLun, err := cs.lunAPI.Create(
-		lunName,
-		location,
-		volSizeByte,
-		volType,
-	)
-
-	if err != nil {
-		msg := fmt.Sprintf(
-			"Failed to create a LUN(name: %s, location: %s, size: %d, type: %s): %v",
-			lunName, location, volSizeByte, volType, err)
-		glog.V(3).Info(msg)
-		return nil, status.Error(codes.Internal, msg)
-	}
-
-	glog.V(5).Infof("LUN %s(%s) created", lunName, newLun.UUID)
-
-	// create a target
-	var newTarget *iscsi.Target
-
-	secrets := req.GetSecrets()
-	user, present := secrets["user"]
-	if present {
-		password, present := secrets["password"]
-		if !present {
-			glog.V(3).Info("Password is required to provide chap authentication")
-			return nil, status.Error(codes.InvalidArgument, "Password is missing")
+		if err != nil {
+			msg := fmt.Sprintf(
+				"Failed to create a LUN(name: %s, location: %s, size: %d, type: %s): %v",
+				lunName, location, volSizeByte, volType, err)
+			glog.V(3).Info(msg)
+			return nil, status.Error(codes.Internal, msg)
 		}
-		newTarget, err = cs.targetAPI.Create(
-			targetName,
-			targetIQN,
-			iscsi.TargetAuthTypeNone,
-			user, password,
-		)
+
+		glog.V(5).Infof("LUN %s(%s) created", lunName, newLun.UUID)
+		lun = newLun
+	} else {
+		msg := fmt.Sprintf(
+			"Volume %s already exists, found LUN %s. Will use existing LUN", volName, lunName)
+		glog.V(3).Info(msg)
+	}
+
+	var target *iscsi.Target
+	if lun.IsMapped {
+		// find mapped target
+		targets, err := cs.targetAPI.List()
+		if err != nil {
+			msg := fmt.Sprintf("Failed get list of targets: %v", err)
+			glog.V(3).Info(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
+
+		for _, tgt := range targets {
+			isMappedToLun := false
+			for _, mappedLun := range tgt.MappedLuns {
+				if mappedLun.LunUUID == lun.UUID {
+					isMappedToLun = true
+					break
+				}
+			}
+
+			if isMappedToLun {
+				target = &tgt
+				break
+			}
+		}
+
+		if target == nil {
+			msg := fmt.Sprintf("Failed to find target mapped to LUN %s", lunName)
+			glog.V(3).Info(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
 
 	} else {
 		// create a target
-		newTarget, err = cs.targetAPI.Create(
-			targetName,
-			targetIQN,
-			iscsi.TargetAuthTypeNone,
-			"", "",
-		)
+		secrets := req.GetSecrets()
+		user, present := secrets["user"]
+		if present {
+			password, present := secrets["password"]
+			if !present {
+				glog.V(3).Info("Password is required to provide chap authentication")
+				return nil, status.Error(codes.InvalidArgument, "Password is missing")
+			}
+			target, err = cs.targetAPI.Create(
+				targetName,
+				targetIQN,
+				iscsi.TargetAuthTypeNone,
+				user, password,
+			)
+		} else {
+			target, err = cs.targetAPI.Create(
+				targetName,
+				targetIQN,
+				iscsi.TargetAuthTypeNone,
+				"", "",
+			)
+		}
+
+		if err != nil {
+			msg := fmt.Sprintf(
+				"Failed to create target(name: %s, iqn: %s): %v",
+				targetName, targetIQN, err)
+			glog.V(3).Info(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
+
+		glog.V(5).Infof("Target %s(ID: %d) created", targetName, target.TargetID)
+
+		// map lun
+		err = cs.targetAPI.MapLun(
+			target.TargetID, []string{lun.UUID})
+		if err != nil {
+			msg := fmt.Sprintf(
+				"Failed to map LUN %s(%s) to target %s(%d): %v",
+				lun.Name, lun.UUID, target.Name, target.TargetID, err)
+			glog.V(5).Info(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
+
+		glog.V(5).Infof("Mapped LUN %s(%s) to target %s(ID: %d)",
+			lun.Name, lun.UUID, target.Name, target.TargetID)
+
 	}
-
-	if err != nil {
-		msg := fmt.Sprintf(
-			"Failed to create target(name: %s, iqn: %s): %v",
-			targetName, targetIQN, err)
-		glog.V(3).Info(msg)
-		return nil, status.Error(codes.Internal, msg)
-	}
-
-	glog.V(5).Infof("Target %s(ID: %d) created", targetName, newTarget.TargetID)
-
-	// map lun
-	err = cs.targetAPI.MapLun(
-		newTarget.TargetID, []string{newLun.UUID})
-	if err != nil {
-		msg := fmt.Sprintf(
-			"Failed to map LUN %s(%s) to target %s(%d): %v",
-			newLun.Name, newLun.UUID, newTarget.Name, newTarget.TargetID, err)
-		glog.V(5).Info(msg)
-		return nil, status.Error(codes.Internal, msg)
-	}
-
-	glog.V(5).Infof("Mapped LUN %s(%s) to target %s(ID: %d)",
-		newLun.Name, newLun.UUID, newTarget.Name, newTarget.TargetID)
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			VolumeId:      makeVolumeID(newTarget.TargetID, 1),
+			VolumeId:      makeVolumeID(target.TargetID, 1),
 			CapacityBytes: volSizeByte,
 			VolumeContext: map[string]string{
-				"targetID":     fmt.Sprintf("%d", newTarget.TargetID),
-				"iqn":          newTarget.IQN,
+				"targetID":     fmt.Sprintf("%d", target.TargetID),
+				"iqn":          target.IQN,
 				"mappingIndex": "1",
 			},
 		},

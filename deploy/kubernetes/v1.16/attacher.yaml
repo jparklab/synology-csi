@@ -81,7 +81,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.0-p1 
+          image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.1
           args :
             - --nodeid
             - NotUsed
