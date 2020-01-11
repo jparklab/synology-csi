@@ -62,9 +62,9 @@ A [Container Storage Interface](https://github.com/container-storage-interface) 
 
 ## Ensure kubernetes cluster is configured for CSI drivers
 
-   For kubernetes v1.12, and v1.13, feature gates need to be enabled to use CSI drivers.
-   Follow instructions on https://kubernetes-csi.github.io/docs/csi-driver-object.html and https://kubernetes-csi.github.io/docs/csi-node-object.html
-   to set up your kubernetes cluster.
+  For kubernetes v1.12, and v1.13, feature gates need to be enabled to use CSI drivers.
+  Follow instructions on https://kubernetes-csi.github.io/docs/csi-driver-object.html and https://kubernetes-csi.github.io/docs/csi-node-object.html
+  to set up your kubernetes cluster.
 
 ## Create a config file <a name='config'></a>
 
@@ -80,6 +80,37 @@ A [Container Storage Interface](https://github.com/container-storage-interface) 
 ## Create a k8s secret from the config file
 
     kubectl create secret generic synology-config --from-file=syno-config.yml
+
+## (Optional) Use https with self-signed CA
+
+  To use https with certificate that is issued by self-signed CA. CSI drivers needs to access the CA's certificate.
+  You can add the certificate using configmap.
+
+  Create a configmap with the certificate
+
+    # e.g.
+    #  kubectl create configmap synology-csi-ca-cert --from-file=self-ca.crt
+    kubectl create configmap synology-csi-ca-cert --from-file=<ca file>
+
+  Add the certificate to the deployments
+
+    # Add to attacher.yml, node.yml, and provisioner.yml
+    ..
+    spec:
+    ...
+    - name: csi-plugin
+      ...
+        volumeMounts:
+        ...
+        - mountPath: /etc/ssl/certs/self-ca.crt
+          name: cert
+          subPath: self-ca.crt      # this should be the same as the file name that is used to create the configmap
+      ...
+      volumes:
+      - configMap:
+          defaultMode: 0444
+          name: synology-csi-ca-cert
+    
 
 ## Deploy to kubernetes
 
