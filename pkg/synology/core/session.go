@@ -32,7 +32,7 @@ import (
 )
 
 func errorToDesc(code int) string {
-	errorToDesc := map[int]string{
+	codeList := map[int]string{
 		100: "Unknown error",
 		101: "Invalid parameter",
 		102: "The requested API does not exist",
@@ -43,7 +43,23 @@ func errorToDesc(code int) string {
 		107: "Session interrupted by duplicate login",
 	}
 
-	return errorToDesc[code]
+	return codeList[code]
+}
+
+func loginErrorToDesc(code int) string {
+	codeList := map[int]string{
+		400: "No such account or incorrect password",
+		401: "Account disabled402Permission denied",
+		403: "2-step verification code required",
+		404: "Failed to authenticate 2-step verification code",
+	}
+
+	result, ok := codeList[code]
+	if ok {
+		return result
+	} else {
+		return errorToDesc(code)
+	}
 }
 
 /************************************************************
@@ -125,30 +141,84 @@ func (s *session) login() (string, error) {
 		v.Encode(),
 	)
 
-	glog.V(5).Infof("Logging in via %s", uri)
-
-	resp, err := http.Get(uri)
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
+	i := 10
 	authResp := responseData{}
-	if err = json.Unmarshal(body, &authResp); err != nil {
-		glog.Errorf("Failed to parse login response: %s(%v)", body, err)
-		return "", err
+	var body []byte
+	var err error
+
+	client := &http.Client{
+		CheckRedirect: nil,
+	}
+
+	for i > 0 {
+		if (i < 10) {
+			time.Sleep(2000 * time.Millisecond)
+		}
+		i = i - 1
+
+		glog.V(5).Infof("Logging in via %s", uri)
+
+		req, err := http.NewRequest("GET", uri, nil)
+		if err != nil {
+			glog.Errorf("Failed making a GET request: %v", err)
+			if i > 0 {
+				continue
+			} else {
+				return "", err
+			}
+		}
+		// req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:59.0) Gecko/20100101 Firefox/59.0")
+		req.Header.Set("User-Agent", "curl/7.64.1")
+		req.Header.Set("Accept", "*/*")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			glog.Errorf("Failed logging in: %v", err)
+			if i > 0 {
+				continue
+			} else {
+				return "", err
+			}
+		}
+
+		defer resp.Body.Close()
+
+		body, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			glog.Errorf("Failed parsing response data : %v", err)
+			if i > 0 {
+				continue
+			} else {
+				return "", err
+			}
+		}
+
+		authResp = responseData{}
+		if err = json.Unmarshal(body, &authResp); err != nil {
+			glog.Errorf("Failed to parse login response: %s(%v)", body, err)
+			if i > 0 {
+				continue
+			} else {
+				return "", err
+			}
+		}
+
+		if !authResp.Success {
+			code := authResp.Error.Code
+			msg := fmt.Sprintf("Failed to login: %d %s: %s", code, loginErrorToDesc(code), body)
+			glog.Errorf(msg)
+			if i > 0 {
+				continue
+			} else {
+				return "", errors.New(msg)
+			}
+		}
+
+		break
 	}
 
 	if !authResp.Success {
-		code := authResp.Error.Code
-		msg := fmt.Sprintf("Failed to login: %s(%d)", errorToDesc(code), code)
-		return "", errors.New(msg)
+		return "", errors.New("Could not login")
 	}
 
 	json.Unmarshal(*authResp.Data["sid"], &s.sid)

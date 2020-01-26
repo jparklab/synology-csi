@@ -1,12 +1,12 @@
 #
 # Copyright 2018 Ji-Young Park(jiyoung.park.dev@gmail.com)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,22 +18,34 @@
 # Use 2-stage builds to reduce size of the final docker image
 #
 
-# build stage
-FROM golang:1.12.6-stretch as builder
+# Cache modules. The cache will be then used by all build stages
+FROM --platform=$BUILDPLATFORM golang:1.13.6-alpine as builder
+ARG BUILDPLATFORM
+RUN apk add --no-cache alpine-sdk
 WORKDIR /go/src/github.com/jparklab/synology-csi
-ADD . .
-RUN make 
+COPY go.mod .
+RUN go mod download
 
-FROM centos:7.6.1810
+# Cross-platform build. Build everything on AMD64 and cross compile
+# as this is much faster than buildin with QEMU on ARMv7
+FROM --platform=$BUILDPLATFORM builder as compiler
+COPY Makefile .
+COPY cmd ./cmd
+COPY pkg ./pkg
+ARG TARGETPLATFORM
+RUN env \
+        CGO_ENABLED=0 \
+        GOARM=$(echo "$TARGETPLATFORM" | cut -f3 -d/ | cut -c2-) \
+        GOARCH=$(echo "$TARGETPLATFORM" | cut -f2 -d/) \
+    make
+
+# Alpine is provided for different architectures, amd64, arm32 and arm64
+FROM alpine:latest
+
 LABEL maintainers="Kubernetes Authors"
 LABEL description="Synology CSI Plugin"
 
-# NOTE(jparklab):
-#   Install open-iscsi instead of iscsi-initiator-utils if base image is ubuntu or debian
-RUN yum install ca-certificates e2fsprogs xfsprogs util-linux -y
+RUN apk add --no-cache e2fsprogs xfsprogs util-linux iproute2
+COPY --from=compiler /go/src/github.com/jparklab/synology-csi/bin/synology-csi-driver synology-csi-driver
 
-# Install 'ip' tools
-RUN yum install iproute -y
-COPY --from=builder /go/src/github.com/jparklab/synology-csi/bin/synology-csi-driver /bin/synology-csi-driver
-
-ENTRYPOINT ["/bin/synology-csi-driver"]
+ENTRYPOINT ["/synology-csi-driver"]
