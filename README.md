@@ -1,10 +1,12 @@
 # synology-csi  [![Build Status](https://dev.azure.com/jparklab/synology-csi/_apis/build/status/jparklab.synology-csi?branchName=master)](https://dev.azure.com/jparklab/synology-csi/_build/latest?definitionId=2&branchName=master) [![Go Report Card](https://goreportcard.com/badge/github.com/jparklab/synology-csi)](https://goreportcard.com/report/github.com/jparklab/synology-csi)
 
-A [Container Storage Interface](https://github.com/container-storage-interface) Driver for Synology NAS
+A [Container Storage Interface](https://github.com/container-storage-interface) Driver for Synology NAS, updated to
+work on amd64, armv7 and arm64.
 
 # Platforms supported
 
- The driver supports linux only since it requires iscsid to be running on the host. It is currently tested with Ubuntu 16.04 and 18.04
+ The driver supports linux only since it requires iscsid to be running on the host. It is currently tested with 
+ Ubuntu 16.04, Ubuntu 18.04 and [Alpine](https://alpinelinux.org/).
 
 # Build
 
@@ -70,12 +72,20 @@ A [Container Storage Interface](https://github.com/container-storage-interface) 
 
     ---
     # syno-config.yml file
-    host: <hostname>        # ip address or hostname of the Synology NAS
-    port: 5000              # change this if you use a port other than the default one
-    username: <login>       # username
-    password: <password>    # password
-    sessionName: Core       # You won't need to touch this value
-    sslVerify: false        # set this true to use https
+    host: <hostname>           # ip address or hostname of the Synology NAS
+    port: 5000                 # change this if you use a port other than the default one
+    sslVerify: false           # set this true to use https
+    loginApiVersion: 2         # Optional. Login version. From 2 to 6. Defaults to "2".
+    loginHttpMethod: <method>  # Optional. Method. "GET", "POST" or "auto" (default). "auto" uses POST on version >= 6
+    username: <login>          # username
+    password: <password>       # password
+    sessionName: Core          # You won't need to touch this value
+    enableSynoToken: no        # Optional. Set to 'true' to enable syno token. Only for versions 3 and above.
+    enableDeviceToken: yes     # Optional. Set to 'true' to enable device token. Only for versions 6 and above.
+    deviceId: <device-id>      # Optional. Only for versions 6 and above. If not set, DEVICE_ID environment var is read.
+    deviceName: <name>         # Optional. Only for versions 6 and above.
+    
+    
 
 ## Create a k8s secret from the config file
 
@@ -142,3 +152,9 @@ e.g.
     reclaimPolicy: Delete
 
 NOTE: if you have already created storage class, you would need to delete the storage class and recreate it. 
+
+# Synology configuration
+
+Make sure you do the following:
+- go to Control Panel / Security / General: Enable "Enahnce browser compatibility by skipping IP checking"
+- go to Control Panel / Security / Account: Disable "Auto block"

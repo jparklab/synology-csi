@@ -14,13 +14,16 @@
 #  limitations under the License.
 #
 
-REV=v0.1.0
+REV=v0.2.0
 
 all: synology-csi-driver
 
+dummy:
+	GO111MODULE=on GOOS=linux go build -v -ldflags '-X main.version=$(REV) -extldflags "-static"' -o ./bin/dummy
+
 synology-csi-driver:
 	mkdir -p bin
-	GO111MODULE=on GOOS=linux go build -v -a -ldflags '-X main.version=$(REV) -extldflags "-static"' -o ./bin/synology-csi-driver ./cmd/syno-csi-plugin
+	GO111MODULE=on GOOS=linux go build -v -ldflags '-X main.version=$(REV) -extldflags "-static"' -o ./bin/synology-csi-driver ./cmd/syno-csi-plugin
 
 test:
 	GO111MODULE=on go test ./...

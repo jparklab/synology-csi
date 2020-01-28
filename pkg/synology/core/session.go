@@ -17,8 +17,11 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"strconv"
 	"time"
 
 	"encoding/json"
@@ -27,8 +30,8 @@ import (
 	"net/url"
 
 	"github.com/golang/glog"
-
 	"github.com/google/go-querystring/query"
+	"github.com/jparklab/synology-csi/pkg/synology/options"
 )
 
 func errorToDesc(code int) string {
@@ -52,6 +55,13 @@ func loginErrorToDesc(code int) string {
 		401: "Account disabled402Permission denied",
 		403: "2-step verification code required",
 		404: "Failed to authenticate 2-step verification code",
+		405: "App portal incorrect.",
+		406: "OTP code enforced.",
+		407: "Max Tries (if auto blocking is set to true).",
+		408: "Password Expired Can not Change.",
+		409: "Password Expired.",
+		410: "Password must change (when first time use or after reset password by admin).",
+		411: "Account Locked (when account max try exceed).",
 	}
 
 	result, ok := codeList[code]
@@ -69,26 +79,50 @@ func loginErrorToDesc(code int) string {
 // Session provides session level functions
 type Session interface {
 	GetSid() string
-	Login(account string, password string) (string, error)
+	Login(synoOption *options.SynologyOptions) (string, error)
 	Logout() error
 	Get(path string, params url.Values) (*http.Response, error)
 	Post(path string, data url.Values) (*http.Response, error)
-}
-
-type authOption struct {
-	API     string `url:"api"`
-	Version int    `url:"version"`
-	Method  string `url:"method"`
-	Account string `url:"account"`
-	Passwd  string `url:"passwd"`
-	Session string `url:"session"`
-	Format  string `url:"format"` // "cookie" or "sid"
 }
 
 type securityData struct {
 	Timeout int `json:"timeout"`
 }
 
+/*
+
+RESPONSE
+
++----------------+-----------+--------------+-------------------------------------------------------------------------+
+| Name           | Value     | Availability | Description                                                             |
++----------------+-----------+--------------+-------------------------------------------------------------------------+
+| id             | <string>  | 2 and onward | Session ID, pass this value by HTTP argument "_sid" or Cookie argument. |
+| did            | <string>  | 6 and onward | Device id, use to skip OTP checking.                                    |
+| synotoken      | <string>  | 3 and onward | If CSRF enabled in DSM, pass this value by HTTP argument "SynoToken"    |
+| is_portal_port | <boolean> | 4 and onward | Login through app portal                                                |
++----------------+-----------+--------------+-------------------------------------------------------------------------+
+
+EXAMPLE
+
+Example:
+{
+	"sid":"Jn5dZ9aS95wh2",
+	"is_portal_port":false
+}
+
+If login format is “cookie”, server will deliver header information including Cookie ID.
+	HTTP/1.1 200 OK
+	Date: Thu, 31 May 2012 09:40:43 GMT
+	Server: Apache/2.2.22 (Unix)
+	P3P: CP="IDC DSP COR ADM DEVi TAIi PSA PSD IVAi IVDi CONi HIS OUR IND CNT" Set-Cookie: id=Jn5dZ9aS95wh2;path=/
+	Vary: Accept-Encoding
+	Content-Encoding: gzip
+	Content-Length: 37
+	Keep-Alive: timeout=5, max=100
+	Connection: Keep-Alive
+	Content-Type: text/plain; charset="UTF-8"
+
+*/
 type responseData struct {
 	Data  map[string]*json.RawMessage `json:"data"`
 	Error struct {
@@ -98,14 +132,20 @@ type responseData struct {
 	Success bool `json:"success"`
 }
 
+func (r *responseData) String() string {
+	if b, err := json.Marshal(r); err != nil {
+		return string(b)
+	} else {
+		return fmt.Sprintf("%v", err)
+	}
+}
+
 type session struct {
 	sid         string
 	baseURL     string
 	sessionName string
 
-	account  string
-	password string
-
+	options       *options.SynologyOptions
 	timeoutMinute int
 	lastLoginTime *time.Time
 }
@@ -122,54 +162,76 @@ func (s *session) GetSid() string {
 	return s.sid
 }
 
+func (s *session) prepareArguments() (url.Values, error) {
+	return query.Values(s.options)
+
+}
+
 func (s *session) login() (string, error) {
-	params := authOption{
-		API:     "SYNO.API.Auth",
-		Version: 2,
-		Method:  "login",
-		Account: s.account,
-		Passwd:  s.password,
-		Session: s.sessionName,
-		Format:  "sid",
+	v, err := s.prepareArguments()
+	if err != nil {
+		glog.Errorf("Failed parsing URL parameters: %v", err)
+		return "", err
 	}
 
-	v, _ := query.Values(params)
-	uri := fmt.Sprintf(
-		"%s/%s?%s",
-		s.baseURL,
-		"auth.cgi",
-		v.Encode(),
-	)
+	var uri string
+	var requestBody []byte
+	var method string
+
+	if s.options.LoginApiVersion >= 6 {
+		uri = fmt.Sprintf(
+			"%s/%s",
+			s.baseURL,
+			"auth.cgi",
+		)
+		method = "POST"
+		requestBody = []byte(v.Encode())
+	} else {
+		uri = fmt.Sprintf(
+			"%s/%s?%s",
+			s.baseURL,
+			"auth.cgi",
+			v.Encode(),
+		)
+		method = "GET"
+		requestBody = nil
+	}
 
 	i := 10
 	authResp := responseData{}
 	var body []byte
-	var err error
 
 	client := &http.Client{
 		CheckRedirect: nil,
 	}
 
 	for i > 0 {
-		if (i < 10) {
+		glog.Infof("Logging in via %s", uri)
+
+		if i < 10 {
 			time.Sleep(2000 * time.Millisecond)
 		}
 		i = i - 1
 
-		glog.V(5).Infof("Logging in via %s", uri)
-
-		req, err := http.NewRequest("GET", uri, nil)
+		var reader io.Reader
+		if requestBody != nil {
+			reader = bytes.NewReader(requestBody)
+		}
+		req, err := http.NewRequest(method, uri, reader)
 		if err != nil {
-			glog.Errorf("Failed making a GET request: %v", err)
+			glog.Errorf("Failed making a %s request: %v", method, err)
 			if i > 0 {
 				continue
 			} else {
 				return "", err
 			}
 		}
-		// req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:59.0) Gecko/20100101 Firefox/59.0")
-		req.Header.Set("User-Agent", "curl/7.64.1")
+
 		req.Header.Set("Accept", "*/*")
+		if method == "POST" {
+			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Add("Content-Length", strconv.Itoa(len(requestBody)))
+		}
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -181,7 +243,11 @@ func (s *session) login() (string, error) {
 			}
 		}
 
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				glog.Errorf("Failed closing the body: %v", err)
+			}
+		}()
 
 		body, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -221,7 +287,11 @@ func (s *session) login() (string, error) {
 		return "", errors.New("Could not login")
 	}
 
-	json.Unmarshal(*authResp.Data["sid"], &s.sid)
+	if err = json.Unmarshal(*authResp.Data["sid"], &s.sid); err != nil {
+		glog.Errorf("Failed to parse auth authResp.Data.sid: %s(%v)", authResp, err)
+		return "", err
+
+	}
 
 	// get login timeout
 	securityParams := url.Values{
@@ -240,7 +310,11 @@ func (s *session) login() (string, error) {
 	}
 
 	body, err = ioutil.ReadAll(securityResp.Body)
-	defer securityResp.Body.Close()
+	defer func() {
+		if err := securityResp.Body.Close(); err != nil {
+			glog.Errorf("Failed closing the body: %v", err)
+		}
+	}()
 
 	securityConf := securityData{}
 	if err = json.Unmarshal(body, &securityConf); err != nil {
@@ -273,9 +347,8 @@ func (s *session) ensureLoggedIn() error {
 	return err
 }
 
-func (s *session) Login(account string, password string) (string, error) {
-	s.account = account
-	s.password = password
+func (s *session) Login(options *options.SynologyOptions) (string, error) {
+	s.options = options
 
 	return s.login()
 }
@@ -359,7 +432,11 @@ func (e *apiEntry) Get(method string, params url.Values) (map[string]*json.RawMe
 		return nil, err
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			glog.Errorf("Failed closing the body: %v", err)
+		}
+	}()
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
@@ -395,7 +472,11 @@ func (e *apiEntry) Post(method string, params url.Values) (map[string]*json.RawM
 		return nil, err
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			glog.Errorf("Failed closing the body: %v", err)
+		}
+	}()
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {

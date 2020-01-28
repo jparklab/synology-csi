@@ -29,10 +29,22 @@ RUN go mod download
 # Cross-platform build. Build everything on AMD64 and cross compile
 # as this is much faster than buildin with QEMU on ARMv7
 FROM --platform=$BUILDPLATFORM builder as compiler
+
 COPY Makefile .
+
+# Copy over a dummy main file to populate build cache. We do this so
+# that next builds will be faster. The file does exactly nothing more
+# and nothing less than just pull in all imports.
+COPY dummy/main.go ./
+
+ARG TARGETPLATFORM
+RUN env \
+        CGO_ENABLED=0 \
+        GOARM=$(echo "$TARGETPLATFORM" | cut -f3 -d/ | cut -c2-) \
+        GOARCH=$(echo "$TARGETPLATFORM" | cut -f2 -d/) \
+    make dummy && rm bin/dummy main.go
 COPY cmd ./cmd
 COPY pkg ./pkg
-ARG TARGETPLATFORM
 RUN env \
         CGO_ENABLED=0 \
         GOARM=$(echo "$TARGETPLATFORM" | cut -f3 -d/ | cut -c2-) \

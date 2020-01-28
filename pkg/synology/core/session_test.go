@@ -18,6 +18,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/jparklab/synology-csi/pkg/synology/options"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -29,7 +30,7 @@ import (
 /************************************************************
  * Tests
  ************************************************************/
-// Tests if a request failes if the session is not logged in
+// Tests if a request fails if the session is not logged in
 func TestSessionNotLoggedIn(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		resp.Write([]byte(""))
@@ -73,7 +74,11 @@ func TestSessionLogin(t *testing.T) {
 	s := NewSession(baseURL, "Core")
 
 	// test login
-	sid, err := s.Login("user", "password")
+	sid, err := s.Login(&options.SynologyOptions{
+		Username: "username",
+		Password: "password",
+	})
+
 	assert.NoError(t, err)
 	assert.Equal(t, "test_sid", sid)
 	assert.Equal(t, 10, s.(*session).timeoutMinute)
@@ -119,7 +124,11 @@ func TestAPIEntry(t *testing.T) {
 
 	baseURL := fmt.Sprintf("%s/webapi", testServer.URL)
 	s := NewSession(baseURL, "Core")
-	s.Login("user", "password")
+
+	s.Login(&options.SynologyOptions{
+		Username: "username",
+		Password: "password",
+	})
 
 	api := NewAPIEntry(s, "entry.cgi", "TestAPI", "1")
 
