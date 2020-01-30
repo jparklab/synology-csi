@@ -8,6 +8,10 @@ work on amd64, armv7 and arm64.
  The driver supports linux only since it requires iscsid to be running on the host. It is currently tested with 
  Ubuntu 16.04, Ubuntu 18.04 and [Alpine](https://alpinelinux.org/).
 
+# Install
+
+Make sure that `iscsiadm` is installed on all the nodes where you want this attacher to run.
+
 # Build
 
 ## Build package
@@ -21,7 +25,8 @@ work on amd64, armv7 and arm64.
 
 # Test
 
-  Here we use [gocsi](https://github.com/rexray/gocsi) to test the driver,
+  Here we use [gocsi](https://github.com/rexray/gocsi) to test the driver.
+  
 
 ## Create a config file for testing
 
