@@ -102,26 +102,6 @@ RESPONSE
 | is_portal_port | <boolean> | 4 and onward | Login through app portal                                                |
 +----------------+-----------+--------------+-------------------------------------------------------------------------+
 
-EXAMPLE
-
-Example:
-{
-	"sid":"Jn5dZ9aS95wh2",
-	"is_portal_port":false
-}
-
-If login format is “cookie”, server will deliver header information including Cookie ID.
-	HTTP/1.1 200 OK
-	Date: Thu, 31 May 2012 09:40:43 GMT
-	Server: Apache/2.2.22 (Unix)
-	P3P: CP="IDC DSP COR ADM DEVi TAIi PSA PSD IVAi IVDi CONi HIS OUR IND CNT" Set-Cookie: id=Jn5dZ9aS95wh2;path=/
-	Vary: Accept-Encoding
-	Content-Encoding: gzip
-	Content-Length: 37
-	Keep-Alive: timeout=5, max=100
-	Connection: Keep-Alive
-	Content-Type: text/plain; charset="UTF-8"
-
 */
 type responseData struct {
 	Data  map[string]*json.RawMessage `json:"data"`
@@ -458,7 +438,7 @@ func (e *apiEntry) Get(method string, params url.Values) (map[string]*json.RawMe
 	return data.Data, nil
 }
 
-// Get sends 'POST' request to the endpoint for the method with the parameters
+// Post sends 'POST' request to the endpoint for the method with the parameters
 // It returns value of 'data' field when the request succeeds, or nil if
 // the request fails or response does not contain data
 func (e *apiEntry) Post(method string, params url.Values) (map[string]*json.RawMessage, error) {

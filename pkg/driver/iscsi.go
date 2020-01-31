@@ -61,16 +61,10 @@ func parseSessionOutput(output string) []Session {
  * iscsiDriver functions
  ************************************************************/
 
-/*
-iscsiadm --mode discovery --type sendtargets --portal 192.168.8.10 --discover
-iscsiadm --mode node --targetname "iqn.2000-01.com.synology:kube-csi-pvc-b96e0cf4-da74-49e3-88d6-f31b2e25c514" --portal 192.168.8.10 --login
-iscsiadm --mode session
-
-*/
-
 func iscsiadm(cmdArgs ...string) utilexec.Cmd {
-	// iscsiadm can be/is a shell script which just chroots to /host and exectues iscsi on the host.
-	// hence a "sh -c" call is required
+	// iscsiadm can/will be a shell script which just chroots to /host and exectues iscsi on the host.
+	// hence a "sh -c" call is required, as executor.Command() can't execute
+	// shell scripts directly
 	command := "iscsiadm " + strings.Join(cmdArgs, " ")
 	executor := utilexec.New()
 	cmd := executor.Command("sh", "-c", command)
