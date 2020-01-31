@@ -1,4 +1,4 @@
-# synology-csi  [![Build Status](https://dev.azure.com/jparklab/synology-csi/_apis/build/status/jparklab.synology-csi?branchName=master)](https://dev.azure.com/jparklab/synology-csi/_build/latest?definitionId=2&branchName=master) [![Go Report Card](https://goreportcard.com/badge/github.com/jparklab/synology-csi)](https://goreportcard.com/report/github.com/jparklab/synology-csi)
+# synology-csi ![Docker image](https://github.com/bokysan/synology-csi/workflows/Docker%20image/badge.svg)
 
 A [Container Storage Interface](https://github.com/container-storage-interface) Driver for Synology NAS, updated to
 work on amd64, armv7 and arm64.
@@ -20,8 +20,13 @@ Make sure that `iscsiadm` is installed on all the nodes where you want this atta
 
 ## Build docker image
 
-    # e.g. docker build -t jparklab/synology-csi .
+    # e.g. docker build -t bokysan/synology-csi .
     docker build [-f Dockerfile] -t <repo>[:<tag>] .
+
+## Build docker multiarch image
+
+    # e.g. ./build.sh -t bokysan/synology-csi
+    ./build.sh -t <repo>[:<tag>] .
 
 # Test
 
@@ -89,8 +94,8 @@ Make sure that `iscsiadm` is installed on all the nodes where you want this atta
     enableDeviceToken: yes     # Optional. Set to 'true' to enable device token. Only for versions 6 and above.
     deviceId: <device-id>      # Optional. Only for versions 6 and above. If not set, DEVICE_ID environment var is read.
     deviceName: <name>         # Optional. Only for versions 6 and above.
-    
-    
+
+
 
 ## Create a k8s secret from the config file
 
@@ -140,8 +145,8 @@ Make sure that `iscsiadm` is installed on all the nodes where you want this atta
 
 ### Parameters for volumes
 
-By default, iscsi LUN will be created on Volume 1(/volume1) location with thin provisioning.
-You can set parameters in sotrage_class.yml to choose different locations or volume type. 
+By default, iscsi LUN will be created on Volume 1 (`/volume1`) location with thin provisioning.
+You can set parameters in `storage_class.yml` to choose different locations or volume type. 
 
 e.g.
 
@@ -159,6 +164,10 @@ e.g.
 NOTE: if you have already created storage class, you would need to delete the storage class and recreate it. 
 
 # Synology configuration
+
+As multiple logins are executed from this service at almost the same time, your Synology might block the
+requests and you will see `407` errors (with version 6) or `400` errors in your log. It is advisable to
+disable Auto block and IP checking if you want to get this working properly.
 
 Make sure you do the following:
 - go to Control Panel / Security / General: Enable "Enahnce browser compatibility by skipping IP checking"

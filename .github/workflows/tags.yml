@@ -1,0 +1,24 @@
+name: Docker tag image
+
+on:
+  push:
+    tags: ['*']
+
+jobs:
+  buildx:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        with:
+          version: latest
+      - name: Build branch / tag
+        env:
+          DOCKER_USERNAME: 'boky'
+          DOCKER_PASSWORD: '${{ secrets.DOCKER_ACCESS_TOKEN }}'
+          PLATFORMS: "linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x"
+        run: ./build.sh -t boky/synology-csi:$(echo ${GITHUB_REF:10}) --push
+
