@@ -1,4 +1,4 @@
-# synology-csi ![Docker image](]https://github.com/jparklab/synology-csi/workflows/Docker%20image/badge.svg) ![Go Report Card](https://goreportcard.com/badge/github.com/jparklab/synology-csi)
+# synology-csi ![Docker image](https://github.com/jparklab/synology-csi/workflows/Docker%20image/badge.svg) ![Go Report Card](https://goreportcard.com/badge/github.com/jparklab/synology-csi)
 
 A [Container Storage Interface](https://github.com/container-storage-interface) Driver for Synology NAS.
 
