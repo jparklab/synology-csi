@@ -19,7 +19,6 @@ package driver
 import (
 	"errors"
 	"fmt"
-	"k8s.io/utils/exec"
 	"strings"
 	"time"
 
@@ -33,6 +32,7 @@ import (
 	"golang.org/x/net/context"
 
 	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/utils/exec"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"

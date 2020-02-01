@@ -17,9 +17,7 @@
 package options
 
 import (
-	"errors"
 	"fmt"
-	"github.com/jparklab/synology-csi/pkg/synology/options"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -32,6 +30,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/jparklab/synology-csi/pkg/driver"
+	"github.com/jparklab/synology-csi/pkg/synology/options"
 )
 
 // RunOptions stores option values
@@ -85,7 +84,7 @@ func ReadConfig(path string) (*options.SynologyOptions, error) {
 			deviceId := os.Getenv("DEVICE_ID")
 			conf.DeviceId = &deviceId
 			if deviceId != "" {
-				glog.Info("Using DEVICE_ID from environment variables: %v", deviceId)
+				glog.V(1).Info("Using DEVICE_ID from environment variables: %v", deviceId)
 			}
 		}
 		if conf.EnableDeviceToken != nil {
@@ -111,7 +110,7 @@ func ReadConfig(path string) (*options.SynologyOptions, error) {
 
 	if conf.LoginHttpMethod != "GET" && conf.LoginHttpMethod != "POST" {
 		glog.V(1).Infof("Invalid login method in config: %v", conf.LoginHttpMethod)
-		return nil, errors.New(fmt.Sprintf("Invalid login method in config: %v", conf.LoginHttpMethod))
+		return nil, fmt.Errorf("Invalid login method in config: %v", conf.LoginHttpMethod)
 	}
 
 	return &conf, nil
