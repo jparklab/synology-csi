@@ -29,6 +29,7 @@ import (
 	"net/http"
 	"net/url"
 
+	retry "github.com/avast/retry-go"
 	"github.com/golang/glog"
 	"github.com/google/go-querystring/query"
 	"github.com/jparklab/synology-csi/pkg/synology/options"
@@ -52,7 +53,8 @@ func errorToDesc(code int) string {
 func loginErrorToDesc(code int) string {
 	codeList := map[int]string{
 		400: "No such account or incorrect password",
-		401: "Account disabled402Permission denied",
+		401: "Account disabled",
+		402: "Permission denied",
 		403: "2-step verification code required",
 		404: "Failed to authenticate 2-step verification code",
 		405: "App portal incorrect.",
@@ -177,7 +179,6 @@ func (s *session) login() (string, error) {
 		requestBody = nil
 	}
 
-	i := 10
 	authResp := responseData{}
 	var body []byte
 
@@ -185,92 +186,75 @@ func (s *session) login() (string, error) {
 		CheckRedirect: nil,
 	}
 
-	for i > 0 {
-		glog.Infof("Logging in via %s", uri)
+	err = retry.Do(
+		func() error {
+			glog.Infof("Logging in via %s", uri)
 
-		if i < 10 {
-			time.Sleep(2000 * time.Millisecond)
-		}
-		i = i - 1
-
-		var reader io.Reader
-		if requestBody != nil {
-			reader = bytes.NewReader(requestBody)
-		}
-		req, err := http.NewRequest(method, uri, reader)
-		if err != nil {
-			glog.Errorf("Failed making a %s request: %v", method, err)
-			if i > 0 {
-				continue
-			} else {
-				return "", err
+			var reader io.Reader
+			if requestBody != nil {
+				reader = bytes.NewReader(requestBody)
 			}
-		}
-
-		req.Header.Set("Accept", "*/*")
-		if method == "POST" {
-			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-			req.Header.Add("Content-Length", strconv.Itoa(len(requestBody)))
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			glog.Errorf("Failed logging in: %v", err)
-			if i > 0 {
-				continue
-			} else {
-				return "", err
+			req, err := http.NewRequest(method, uri, reader)
+			if err != nil {
+				glog.Errorf("Failed making a %s request: %v", method, err)
+				return err
 			}
-		}
 
-		defer func() {
-			if err := resp.Body.Close(); err != nil {
-				glog.Errorf("Failed closing the body: %v", err)
+			req.Header.Set("Accept", "*/*")
+			if method == "POST" {
+				req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+				req.Header.Add("Content-Length", strconv.Itoa(len(requestBody)))
 			}
-		}()
 
-		body, err = ioutil.ReadAll(resp.Body)
-		if err != nil {
-			glog.Errorf("Failed parsing response data : %v", err)
-			if i > 0 {
-				continue
-			} else {
-				return "", err
+			resp, err := client.Do(req)
+			if err != nil {
+				glog.Errorf("Failed logging in: %v", err)
+				return err
 			}
-		}
 
-		authResp = responseData{}
-		if err = json.Unmarshal(body, &authResp); err != nil {
-			glog.Errorf("Failed to parse login response: %s(%v)", body, err)
-			if i > 0 {
-				continue
-			} else {
-				return "", err
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					glog.Errorf("Failed closing the body: %v", err)
+				}
+			}()
+
+			body, err = ioutil.ReadAll(resp.Body)
+			if err != nil {
+				glog.Errorf("Failed parsing response data : %v", err)
+				return err
 			}
-		}
 
-		if !authResp.Success {
-			code := authResp.Error.Code
-			msg := fmt.Sprintf("Failed to login: %d %s: %s", code, loginErrorToDesc(code), body)
-			glog.Errorf(msg)
-			if i > 0 {
-				continue
-			} else {
-				return "", errors.New(msg)
+			authResp = responseData{}
+			if err = json.Unmarshal(body, &authResp); err != nil {
+				glog.Errorf("Failed to parse login response: %s(%v)", body, err)
+				return err
 			}
-		}
 
-		break
-	}
+			if !authResp.Success {
+				code := authResp.Error.Code
+				msg := fmt.Sprintf(
+					"Failed to login: %d %s: %s",
+					code, loginErrorToDesc(code), body)
+				glog.Errorf(msg)
+				// do not retry for authentication failure
+				// to avoid locking the account due to misconfiguration
+				// (e.g. wrong password)
+				return retry.Unrecoverable(errors.New(msg))
+			}
 
-	if !authResp.Success {
-		return "", errors.New("Could not login")
+			return nil
+		},
+		retry.Attempts(5),
+		retry.Delay(time.Second*3),
+	)
+
+	if err != nil {
+		return "", err
 	}
 
 	if err = json.Unmarshal(*authResp.Data["sid"], &s.sid); err != nil {
 		glog.Errorf("Failed to parse auth authResp.Data.sid: %s(%v)", authResp, err)
 		return "", err
-
 	}
 
 	// get login timeout

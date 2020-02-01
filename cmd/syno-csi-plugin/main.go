@@ -63,13 +63,13 @@ func main() {
 
 			return nil
 		},
+		SilenceUsage: true,
 	}
 
 	runOptions.AddFlags(rootCmd, rootCmd.PersistentFlags())
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 

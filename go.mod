@@ -7,6 +7,7 @@ replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190418200329-18908d1
 replace k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d
 
 require (
+	github.com/avast/retry-go v2.5.0+incompatible
 	github.com/container-storage-interface/spec v1.0.0
 	github.com/coreos/etcd v3.3.13+incompatible // indirect
 	github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a // indirect
