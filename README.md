@@ -1,12 +1,13 @@
-# synology-csi ![Docker image](https://github.com/bokysan/synology-csi/workflows/Docker%20image/badge.svg)
+# synology-csi ![Docker image](]https://github.com/jparklab/synology-csi/workflows/Docker%20image/badge.svg) ![Go Report Card](https://goreportcard.com/badge/github.com/jparklab/synology-csi)
 
-A [Container Storage Interface](https://github.com/container-storage-interface) Driver for Synology NAS, updated to
-work on amd64, armv7 and arm64.
+A [Container Storage Interface](https://github.com/container-storage-interface) Driver for Synology NAS.
 
 # Platforms supported
 
  The driver supports linux only since it requires iscsid to be running on the host. It is currently tested with 
- Ubuntu 16.04, Ubuntu 18.04 and [Alpine](https://alpinelinux.org/).
+ Ubuntu 16.04, Ubuntu 18.04, and [Alpine](https://alpinelinux.org/).
+
+ We have prebuilt docker images for amd64, arm64, armv7 architectures.
 
 # Install
 
@@ -20,18 +21,19 @@ Make sure that `iscsiadm` is installed on all the nodes where you want this atta
 
 ## Build docker image
 
-    # e.g. docker build -t bokysan/synology-csi .
+    # e.g. docker build -t jparklab/synology-csi .
     docker build [-f Dockerfile] -t <repo>[:<tag>] .
 
 ## Build docker multiarch image
 
-    # e.g. ./build.sh -t bokysan/synology-csi
+In order to build a multiarch image, you must have Docker 19.03 or higher version that supports [buildx](https://docs.docker.com/buildx/working-with-buildx/)
+
+    # e.g. ./build.sh -t jparklab/synology-csi
     ./build.sh -t <repo>[:<tag>] .
 
 # Test
 
   Here we use [gocsi](https://github.com/rexray/gocsi) to test the driver.
-  
 
 ## Create a config file for testing
 
@@ -85,10 +87,10 @@ Make sure that `iscsiadm` is installed on all the nodes where you want this atta
     host: <hostname>           # ip address or hostname of the Synology NAS
     port: 5000                 # change this if you use a port other than the default one
     sslVerify: false           # set this true to use https
-    loginApiVersion: 2         # Optional. Login version. From 2 to 6. Defaults to "2".
-    loginHttpMethod: <method>  # Optional. Method. "GET", "POST" or "auto" (default). "auto" uses POST on version >= 6
     username: <login>          # username
     password: <password>       # password
+    loginApiVersion: 2         # Optional. Login version. From 2 to 6. Defaults to "2".
+    loginHttpMethod: <method>  # Optional. Method. "GET", "POST" or "auto" (default). "auto" uses POST on version >= 6
     sessionName: Core          # You won't need to touch this value
     enableSynoToken: no        # Optional. Set to 'true' to enable syno token. Only for versions 3 and above.
     enableDeviceToken: yes     # Optional. Set to 'true' to enable device token. Only for versions 6 and above.
