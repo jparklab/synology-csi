@@ -19,8 +19,8 @@ jobs:
           version: latest
       - name: Build master
         env:
-          DOCKER_USERNAME: 'boky'
+          DOCKER_USERNAME: 'jparklab'
           DOCKER_PASSWORD: '${{ secrets.DOCKER_ACCESS_TOKEN }}'
           PLATFORMS: "linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x"
-        run: ./build.sh -t boky/synology-csi --push
+        run: ./build.sh -t jparklab/synology-csi --push
 
