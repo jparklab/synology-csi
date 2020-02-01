@@ -34,7 +34,7 @@ subjects:
   - kind: ServiceAccount
     name: csi-attacher-sa
     namespace: synology-csi
-roleRef: 
+roleRef:
   kind: ClusterRole
   name: csi-synology-attacher-role
   apiGroup: rbac.authorization.k8s.io
@@ -56,7 +56,7 @@ spec:
       labels:
         app: synology-csi-attacher
     spec:
-      serviceAccount: csi-attacher-sa
+      serviceAccountName: csi-attacher-sa
       containers:
         - name: csi-attacher
           securityContext:
@@ -82,7 +82,7 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           image: jparklab/synology-csi:v1.0.0-kubernetes-1.14.1
-          args :
+          args:
             - --nodeid
             - NotUsed
             - --endpoint=$(CSI_ENDPOINT)

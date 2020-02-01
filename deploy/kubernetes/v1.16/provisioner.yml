@@ -37,7 +37,7 @@ spec:
       labels:
         app: synology-csi-provisioner
     spec:
-      serviceAccount: csi-provisioner-sa
+      serviceAccountName: csi-attacher-sa
       containers:
         - name: csi-provisioner
           securityContext:
