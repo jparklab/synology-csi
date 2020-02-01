@@ -34,7 +34,7 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use:  "synology-csi-plugin",
 		Long: "Synology CSI(Container Storage Interface) plugin",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			flag.CommandLine.Parse([]string{"-v", "8", "--logtostderr=1"})
 
 			endpoint := runOptions.Endpoint
@@ -43,23 +43,33 @@ func main() {
 			synoOption, err := options.ReadConfig(runOptions.SynologyConf)
 			if err != nil {
 				fmt.Printf("Failed to read config: %v\n", err)
-				return
+				return err
+			}
+
+			if runOptions.CheckLogin {
+				_, _, err := driver.Login(synoOption)
+				if err != nil {
+					fmt.Printf("Failed to login: %v\n", err)
+				}
+				return err
 			}
 
 			drv, err := driver.NewDriver(nodeID, endpoint, synoOption)
 			if err != nil {
 				fmt.Printf("Failed to create driver: %v\n", err)
-				return
+				return err
 			}
 			drv.Run()
+
+			return nil
 		},
+		SilenceUsage: true,
 	}
 
 	runOptions.AddFlags(rootCmd, rootCmd.PersistentFlags())
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 

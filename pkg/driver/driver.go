@@ -28,6 +28,7 @@ import (
 	"github.com/jparklab/synology-csi/pkg/synology/api/iscsi"
 	"github.com/jparklab/synology-csi/pkg/synology/api/storage"
 	"github.com/jparklab/synology-csi/pkg/synology/core"
+	"github.com/jparklab/synology-csi/pkg/synology/options"
 )
 
 const (
@@ -36,16 +37,6 @@ const (
 
 	version = "0.1.0"
 )
-
-// SynologyOptions contains options to access synology NAS web api
-type SynologyOptions struct {
-	Host        string `yaml:"host"`
-	Port        int    `yaml:"port"`
-	Username    string `yaml:"username"`
-	Password    string `yaml:"password"`
-	SessionName string `yaml:"sessionName"`
-	SslVerify   bool   `yaml:"sslVerify"`
-}
 
 // Driver is top interface to run server
 type Driver interface {
@@ -61,10 +52,7 @@ type driver struct {
 	session      core.Session
 }
 
-// NewDriver creates a Driver object
-func NewDriver(nodeID string, endpoint string, synoOption *SynologyOptions) (Driver, error) {
-	glog.Infof("Driver: %v", DriverName)
-
+func Login(synoOption *options.SynologyOptions) (*core.Session, string, error) {
 	var proto = "http"
 	if synoOption.SslVerify {
 		proto = "https"
@@ -74,10 +62,19 @@ func NewDriver(nodeID string, endpoint string, synoOption *SynologyOptions) (Dri
 		"%s://%s:%d/webapi", proto,
 		synoOption.Host, synoOption.Port)
 
-	glog.V(1).Infof("Use synology: %s", synoAPIUrl)
+	glog.V(1).Infof("Use Synology: %s", synoAPIUrl)
 
 	session := core.NewSession(synoAPIUrl, synoOption.SessionName)
-	_, err := session.Login(synoOption.Username, synoOption.Password)
+	loginResult, err := session.Login(synoOption)
+
+	return &session, loginResult, err
+}
+
+// NewDriver creates a Driver object
+func NewDriver(nodeID string, endpoint string, synoOption *options.SynologyOptions) (Driver, error) {
+	glog.Infof("Driver: %v", DriverName)
+
+	session, _, err := Login(synoOption)
 	if err != nil {
 		glog.V(3).Infof("Failed to login: %v", err)
 		return nil, err
@@ -86,7 +83,7 @@ func NewDriver(nodeID string, endpoint string, synoOption *SynologyOptions) (Dri
 	d := &driver{
 		endpoint:     endpoint,
 		synologyHost: synoOption.Host,
-		session:      session,
+		session:      *session,
 	}
 
 	csiDriver := csicommon.NewCSIDriver(DriverName, version, nodeID)
@@ -114,7 +111,7 @@ func newControllerServer(d *driver) *controllerServer {
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d.csiDriver),
 		lunAPI:                  iscsi.NewLunAPI(d.session),
 		targetAPI:               iscsi.NewTargetAPI(d.session),
-        volumeAPI:               storage.NewVolumeAPI(d.session),
+		volumeAPI:               storage.NewVolumeAPI(d.session),
 	}
 }
 

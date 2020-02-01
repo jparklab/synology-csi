@@ -1,0 +1,13 @@
+Dockerfile
+build.sh
+azure-pipelines.yml
+README.md
+LICENCE
+CHANGELOG*
+CONTRIBUTING*
+OWNERS
+SECURITY_CONTRACTS
+code-of-conduct.md
+bin/*
+go.sum
+

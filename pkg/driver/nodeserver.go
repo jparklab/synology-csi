@@ -32,6 +32,7 @@ import (
 	"golang.org/x/net/context"
 
 	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/utils/exec"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -111,46 +112,34 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	// run discovery to add target
-	if err = ns.iscsiDrv.doISCSIDiscovery(); err != nil {
+	if err = ns.iscsiDrv.discovery(); err != nil {
 		msg := fmt.Sprintf("Failed to run ISCSI discovery: %v", err)
 		glog.V(3).Info(msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
-    // check if we already have a session
-    sessions, err := ns.iscsiDrv.listSessions()
-    if err != nil {
-		msg := fmt.Sprintf(
-			"Unable to list existing sessions: %v", err)
-		glog.V(3).Info(msg)
-		return nil, status.Error(codes.Internal, msg)
-    }
+	hasSession, err := ns.hasSession(target.IQN)
+	if err != nil {
+		return nil, err
+	}
 
-    var hasSession = false
-    for _, sess := range(sessions) {
-        if sess.IQN == target.IQN {
-            hasSession = true
-            break
-        }
-    }
+	if hasSession {
+		glog.V(5).Infof("Found an existing session for %s", target.IQN)
+	} else {
+		// login
+		if err = ns.iscsiDrv.login(target); err != nil {
+			msg := fmt.Sprintf("Failed to run ISCSI login: %v", err)
+			glog.V(3).Info(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
 
-    if hasSession {
-        glog.V(5).Infof("Found an existing session for %s", target.IQN)
-    } else {
-        // login
-        if err = ns.iscsiDrv.login(target); err != nil {
-            msg := fmt.Sprintf("Failed to run ISCSI login: %v", err)
-            glog.V(3).Info(msg)
-            return nil, status.Error(codes.Internal, msg)
-        }
-
-        defer func() {
-            // logout target when we fail to mount
-            if err != nil {
+		defer func() {
+			// logout target when we fail to mount
+			if err != nil {
 				_ = ns.iscsiDrv.logout(target)
-            }
-        }()
-    } 
+			}
+		}()
+	}
 
 	// find device mapped to the target
 	targetDevPath := fmt.Sprintf("%s-lun-%d", target.IQN, mappingIndex)
@@ -283,4 +272,30 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	// No staging is necessary since we do not share volumes
 	return &csi.NodeUnstageVolumeResponse{}, nil
+}
+
+// Check if session exists for the given IQN
+func (ns *nodeServer) hasSession(iqn string) (bool, error) {
+	// check if we already have a session
+	sessions, err := ns.iscsiDrv.session()
+	if err != nil {
+		if exiterr, ok := err.(exec.ExitError); ok {
+			if exiterr.ExitStatus() == 21 {
+				// This is OK -- this means "no sessions"
+				return false, nil
+			}
+		}
+
+		msg := fmt.Sprintf("Unable to list existing sessions: %v", err)
+		glog.V(3).Info(msg)
+		return false, status.Error(codes.Internal, msg)
+	}
+
+	for _, sess := range sessions {
+		if sess.IQN == iqn {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

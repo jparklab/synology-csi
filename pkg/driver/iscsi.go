@@ -19,7 +19,7 @@ package driver
 import (
 	"errors"
 	"fmt"
-    "regexp"
+	"regexp"
 	"strings"
 
 	"github.com/golang/glog"
@@ -33,26 +33,26 @@ type iscsiDriver struct {
 }
 
 type Session struct {
-    IQN     string
+	IQN string
 }
 
 /************************************************************
  * helper functions
  ************************************************************/
-func parseSessionOutput(output string) ([]Session) {
-    lines := strings.Split(output, "\n")
-    iqn_re, _ := regexp.Compile(".*(iqn.\\S+)\\s.*")
+func parseSessionOutput(output string) []Session {
+	lines := strings.Split(output, "\n")
+	iqnRe, _ := regexp.Compile(".*(iqn.\\S+)\\s.*")
 
-    var sessions []Session
-    for _, line := range(lines) {
-        match := iqn_re.FindStringSubmatch(line)
-        if len(match) == 0 {
-            continue
-        }
+	var sessions []Session
+	for _, line := range lines {
+		match := iqnRe.FindStringSubmatch(line)
+		if len(match) == 0 {
+			continue
+		}
 
-        iqn := match[1]
-        sessions = append(sessions, Session{iqn})
-    }
+		iqn := match[1]
+		sessions = append(sessions, Session{iqn})
+	}
 
 	return sessions
 }
@@ -60,79 +60,67 @@ func parseSessionOutput(output string) ([]Session) {
 /************************************************************
  * iscsiDriver functions
  ************************************************************/
-func (d *iscsiDriver) doISCSIDiscovery() error {
+
+func iscsiadm(cmdArgs ...string) utilexec.Cmd {
+	// iscsiadm can/will be a shell script which just chroots to /host
+	// and exectues iscsi on the host.
+	// hence a "sh -c" call is required, as executor.Command() can't execute
+	// shell scripts directly
+	command := "iscsiadm " + strings.Join(cmdArgs, " ")
 	executor := utilexec.New()
-	cmdArgs := []string{
-		"-m", "discovery",
-		"-t", "sendtargets",
-		"-p", d.synologyHost,
-	}
-	cmd := executor.Command("iscsiadm", cmdArgs...)
+	cmd := executor.Command("sh", "-c", command)
+	glog.V(5).Infof("[EXECUTING] %s", command)
+	return cmd
+}
 
-	glog.V(5).Infof("[EXECUTING] %s", strings.Join(cmdArgs, " "))
-
+func (d *iscsiDriver) discovery() error {
+	cmd := iscsiadm(
+		"--mode", "discovery",
+		"--type", "sendtargets",
+		"--portal", d.synologyHost,
+		"--discover")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		msg := fmt.Sprintf("Error running iscsiadm discovery: %s(%v)", out, err)
 		glog.V(3).Info(msg)
 		return errors.New(msg)
 	}
-
 	return nil
 }
 
-func (d *iscsiDriver) listSessions() ([]Session, error) {
-    executor := utilexec.New()
-    cmdArgs := []string{
-        "-m", "session",
-    }
-    cmd := executor.Command("iscsiadm", cmdArgs...)
-	glog.V(5).Infof("[EXECUTING] %s", strings.Join(cmdArgs, " "))
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		glog.V(3).Infof("Error running iscsiadm session: %v", err)
-		return nil, err
-	}
-
-    return parseSessionOutput(string(out)), nil
-}
-
 func (d *iscsiDriver) login(target *iscsi.Target) error {
-	executor := utilexec.New()
-	cmdArgs := []string{
-		"-m", "node",
-		"-T", target.IQN,
-		"-p", d.synologyHost,
-		"--login",
-	}
-	cmd := executor.Command("iscsiadm", cmdArgs...)
-	glog.V(5).Infof("[EXECUTING] %s", strings.Join(cmdArgs, " "))
-
+	cmd := iscsiadm(
+		"--mode", "node",
+		"--targetname", target.IQN,
+		"--portal", d.synologyHost,
+		"--login")
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		glog.V(3).Infof("Error running iscsiadm login: %v", err)
 		return err
 	}
-
 	return nil
 }
 
-func (d *iscsiDriver) logout(target *iscsi.Target) error {
-	executor := utilexec.New()
-	cmdArgs := []string{
-		"-m", "node",
-		"-T", target.IQN,
-		"--logout",
+func (d *iscsiDriver) session() ([]Session, error) {
+	cmd := iscsiadm("--mode", "session")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		glog.V(3).Infof("Error running iscsiadm session: %v", err)
+		return nil, err
 	}
-	cmd := executor.Command("iscsiadm", cmdArgs...)
-	glog.V(5).Infof("[EXECUTING] %s", strings.Join(cmdArgs, " "))
+	return parseSessionOutput(string(out)), nil
+}
 
+func (d *iscsiDriver) logout(target *iscsi.Target) error {
+	cmd := iscsiadm(
+		"--mode", "node",
+		"--targetname", target.IQN,
+		"--logout")
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		glog.V(3).Infof("Error running iscsiadm logout: %v", err)
 		return err
 	}
-
 	return nil
 }

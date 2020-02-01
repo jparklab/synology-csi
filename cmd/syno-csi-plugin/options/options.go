@@ -17,7 +17,10 @@
 package options
 
 import (
+	"fmt"
 	"io/ioutil"
+	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 
@@ -27,6 +30,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/jparklab/synology-csi/pkg/driver"
+	"github.com/jparklab/synology-csi/pkg/synology/options"
 )
 
 // RunOptions stores option values
@@ -34,6 +38,7 @@ type RunOptions struct {
 	NodeID       string
 	Endpoint     string
 	SynologyConf string
+	CheckLogin   bool // Check if app is able to log into Synology and exit immediately
 }
 
 // NewRunOptions creates a default option object
@@ -45,18 +50,67 @@ func NewRunOptions() *RunOptions {
 }
 
 // ReadConfig reads synology configuration file
-func ReadConfig(path string) (*driver.SynologyOptions, error) {
+func ReadConfig(path string) (*options.SynologyOptions, error) {
 	f, err := ioutil.ReadFile(path)
 	if err != nil {
 		glog.V(1).Infof("Unable to open config file: %v", err)
 		return nil, err
 	}
 
-	var conf driver.SynologyOptions
+	conf := options.NewSynologyOptions()
 	err = yaml.Unmarshal(f, &conf)
 	if err != nil {
 		glog.V(1).Infof("Failed to parse config: %v", err)
 		return nil, err
+	}
+
+	if conf.LoginApiVersion <= 0 {
+		conf.LoginApiVersion = 2
+	}
+	if conf.LoginApiVersion >= 3 {
+		if conf.EnableSynoToken != nil {
+			val := strings.ToLower(*conf.EnableSynoToken)
+			if val == "yes" || val == "1" || val == "true" {
+				yes := "yes"
+				conf.EnableSynoToken = &yes
+			} else {
+				no := "no"
+				conf.EnableSynoToken = &no
+			}
+		}
+	}
+	if conf.LoginApiVersion >= 6 {
+		if conf.DeviceId == nil || *conf.DeviceId == "" {
+			deviceId := os.Getenv("DEVICE_ID")
+			conf.DeviceId = &deviceId
+			if deviceId != "" {
+				glog.V(1).Info("Using DEVICE_ID from environment variables: %v", deviceId)
+			}
+		}
+		if conf.EnableDeviceToken != nil {
+			val := strings.ToLower(*conf.EnableDeviceToken)
+			if val == "yes" || val == "1" || val == "true" {
+				yes := "yes"
+				conf.EnableDeviceToken = &yes
+			} else {
+				no := "no"
+				conf.EnableDeviceToken = &no
+			}
+		}
+	}
+
+	conf.LoginHttpMethod = strings.TrimSpace(strings.ToUpper(conf.LoginHttpMethod))
+	if conf.LoginHttpMethod == "AUTO" {
+		if conf.LoginApiVersion >= 6 {
+			conf.LoginHttpMethod = "POST"
+		} else {
+			conf.LoginHttpMethod = "GET"
+		}
+	}
+
+	if conf.LoginHttpMethod != "GET" && conf.LoginHttpMethod != "POST" {
+		glog.V(1).Infof("Invalid login method in config: %v", conf.LoginHttpMethod)
+		return nil, fmt.Errorf("Invalid login method in config: %v", conf.LoginHttpMethod)
 	}
 
 	return &conf, nil
@@ -68,6 +122,7 @@ func (o *RunOptions) AddFlags(cmd *cobra.Command, fs *pflag.FlagSet) {
 	fs.StringVar(&o.Endpoint, "endpoint", o.Endpoint, "CSI endpoint")
 
 	fs.StringVar(&o.SynologyConf, "synology-config", o.SynologyConf, "Synology config yaml file")
+	fs.BoolVar(&o.CheckLogin, "check-login", o.CheckLogin, "Just try to login and exit")
 
 	cmd.MarkFlagRequired("endpoint")
 	cmd.MarkFlagRequired("synology-config")
