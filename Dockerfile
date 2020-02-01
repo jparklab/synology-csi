@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+# default values
+ARG BUILDPLATFORM="linux/amd64"
+ARG TARGETPLATFORM="linux/amd64"
 #
 # Use 2-stage builds to reduce size of the final docker image
 #
