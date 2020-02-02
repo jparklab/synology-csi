@@ -62,11 +62,12 @@ func parseSessionOutput(output string) []Session {
  ************************************************************/
 
 func iscsiadm(cmdArgs ...string) utilexec.Cmd {
-	// iscsiadm can/will be a shell script which just chroots to /host
-	// and exectues iscsi on the host.
+	// /sbin/iscsiadm is a shell script created from ConfigMap,
+	// which just chroots to /host // and exectues iscsi on the host.
+	// (see kubernetes/*/node.yml)
 	// hence a "sh -c" call is required, as executor.Command() can't execute
 	// shell scripts directly
-	command := "iscsiadm " + strings.Join(cmdArgs, " ")
+	command := "/sbin/iscsiadm " + strings.Join(cmdArgs, " ")
 	executor := utilexec.New()
 	cmd := executor.Command("sh", "-c", command)
 	glog.V(5).Infof("[EXECUTING] %s", command)
