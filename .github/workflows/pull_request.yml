@@ -19,5 +19,8 @@ jobs:
 
       - name: Run Buildx
         env:
-          PLATFORMS: "linux/386,linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le"
+          # Removed linux/arm/v7 as build gets stuck while building arm/v7
+          # Should be re-added once the build issue is resolved
+          # PLATFORMS: "linux/386,linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le"
+          PLATFORMS: "linux/386,linux/amd64,linux/arm64,linux/ppc64le"
         run: ./build.sh -t jparklab/synology-csi
