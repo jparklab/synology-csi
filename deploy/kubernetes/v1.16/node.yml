@@ -50,7 +50,7 @@ metadata:
   namespace: synology-csi
 data:
   iscsiadm: |
-    #!/bin/bash
+    #!/bin/sh
     chroot /host /sbin/iscsiadm "$@"
     
 ---
