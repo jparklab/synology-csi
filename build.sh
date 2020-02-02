@@ -6,9 +6,12 @@ BUILDER_INSTANCE_NAME="synology-csi-multiarch"
 export DOCKER_BUILDKIT=1
 export DOCKER_CLI_EXPERIMENTAL=enabled
 
-if ! docker buildx inspect ${BUILDER_INSTANCE_NAME} > /dev/null; then
-    docker buildx create --name ${BUILDER_INSTANCE_NAME}
+if docker buildx inspect ${BUILDER_INSTANCE_NAME} > /dev/null; then
+    # clean up any stale instance 
+    docker buildx rm --name ${BUILDER_INSTANCE_NAME}
 fi
+
+docker buildx create --name ${BUILDER_INSTANCE_NAME}
 docker buildx use ${BUILDER_INSTANCE_NAME}
 
 if [[ "$*" == *--push* ]]; then
