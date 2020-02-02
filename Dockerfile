@@ -55,7 +55,7 @@ RUN env \
     make
 
 # Alpine is provided for different architectures, amd64, arm32 and arm64
-FROM centos:latest
+FROM centos:centos7
 
 LABEL maintainers="Kubernetes Authors"
 LABEL description="Synology CSI Plugin"
