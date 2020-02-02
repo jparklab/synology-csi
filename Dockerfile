@@ -55,12 +55,17 @@ RUN env \
     make
 
 # Alpine is provided for different architectures, amd64, arm32 and arm64
-FROM alpine:latest
+FROM centos:latest
 
 LABEL maintainers="Kubernetes Authors"
 LABEL description="Synology CSI Plugin"
 
-RUN apk add --no-cache e2fsprogs xfsprogs util-linux iproute2
+# NOTE(jparklab):
+#   Install open-iscsi instead of iscsi-initiator-utils if base image is ubuntu or debian
+RUN yum install ca-certificates e2fsprogs xfsprogs util-linux -y
+# Install 'ip' tools(for troubleshooting)
+RUN yum install iproute -y
+
 COPY --from=compiler /go/src/github.com/jparklab/synology-csi/bin/synology-csi-driver synology-csi-driver
 
 ENTRYPOINT ["/synology-csi-driver"]
