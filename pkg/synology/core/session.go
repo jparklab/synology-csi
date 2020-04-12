@@ -253,7 +253,7 @@ func (s *session) login() (string, error) {
 	}
 
 	if err = json.Unmarshal(*authResp.Data["sid"], &s.sid); err != nil {
-		glog.Errorf("Failed to parse auth authResp.Data.sid: %s(%v)", authResp, err)
+		glog.Errorf("Failed to parse auth authResp.Data.sid: %s(%v)", authResp.String(), err)
 		return "", err
 	}
 
