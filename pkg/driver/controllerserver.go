@@ -54,6 +54,10 @@ type controllerServer struct {
 	volumeAPI storage.VolumeAPI
 }
 
+func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+	return &csi.ControllerExpandVolumeResponse{}, nil
+}
+
 // CreateVolume creates a LUN and a target for a volume
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	// Volume name
