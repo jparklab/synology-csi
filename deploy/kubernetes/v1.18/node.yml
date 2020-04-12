@@ -1,0 +1,178 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-node-sa
+  namespace: synology-csi
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-node
+  namespace: synology-csi
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "update"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-node
+  namespace: synology-csi
+subjects:
+  - kind: ServiceAccount
+    name: csi-node-sa
+    namespace: synology-csi
+roleRef:
+  kind: ClusterRole
+  name: csi-node
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: synology-csi-iscsiadm
+  namespace: synology-csi
+data:
+  iscsiadm: |
+    #!/bin/sh
+    if [ -x /host/sbin/iscsiadm ]; then
+      chroot /host /sbin/iscsiadm "$@"
+    elif [ -x /host/usr/local/sbin/iscsiadm ]; then
+      chroot /host/usr/local/sbin/iscsiadm "$@"
+    elif [ -x /host/bin/iscsiadm ]; then
+      chroot /host /bin/iscsiadm "$@"
+    elif [ -x /host/usr/local/bin/iscsiadm ]; then
+      chroot /host /usr/local/bin/iscsiadm "$@"
+    else
+      chroot /host iscsiadm "$@"
+    fi
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: synology-csi-node
+  namespace: synology-csi
+spec:
+  selector:
+    matchLabels:
+      app: synology-csi-node
+  template:
+    metadata:
+      labels:
+        app: synology-csi-node
+    spec:
+      serviceAccount: csi-node-sa
+      hostNetwork: true
+      containers:
+        - name: csi-driver-registrar
+          securityContext:
+            privileged: true
+          imagePullPolicy: Always
+          image: boky/csi-node-driver-registrar:latest
+          args:
+            - --v=5
+            - --csi-address=$(ADDRESS)
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/csi.synology.com/csi.sock
+          lifecycle:
+            preStop:
+              exec:
+                command: 
+                  - /bin/sh
+                  - -c
+                  - rm -rf /registration/csi.synology.com /registration/csi.synology.com-reg.sock
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+        - name: csi-plugin
+          securityContext:
+            privileged: true
+          imagePullPolicy: Always
+          image: boky/synology-csi:latest
+          args:
+            - --nodeid=$(KUBE_NODE_NAME)
+            - --endpoint=$(CSI_ENDPOINT)
+            - --synology-config
+            - /etc/synology/syno-config.yml
+            - --logtostderr
+            - --v=5
+          env:
+            - name: CSI_ENDPOINT
+              value: unix://csi/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: DEVICE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: kubelet-dir
+              mountPath: /var/lib/kubelet
+              mountPropagation: "Bidirectional"
+            - name: plugin-dir
+              mountPath: /csi
+            - name: device-dir
+              mountPath: /dev
+            - name: synology-config
+              mountPath: /etc/synology
+              readOnly: true
+            - name: host-root
+              mountPath: /host
+            - name: chroot-iscsiadm
+              mountPath: /sbin/iscsiadm
+              subPath: iscsiadm
+      volumes:
+        - name: kubelet-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/csi.synology.com/
+            type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry
+            type: Directory
+        - name: device-dir
+          hostPath:
+            path: /dev
+            type: Directory
+        - name: chroot-iscsiadm
+          configMap:
+            defaultMode: 0755
+            name: synology-csi-iscsiadm
+        - name: host-root
+          hostPath:
+            path: /
+            type: Directory
+        - name: synology-config
+          secret:
+            secretName: synology-config
