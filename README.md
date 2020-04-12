@@ -101,7 +101,7 @@ In order to build a multiarch image, you must have Docker 19.03 or higher versio
 
 ## Create a k8s secret from the config file
 
-    kubectl create secret generic synology-config --from-file=syno-config.yml
+    kubectl create secret -n synology-csi generic synology-config --from-file=syno-config.yml
 
 ## (Optional) Use https with self-signed CA
 
