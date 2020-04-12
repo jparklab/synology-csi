@@ -35,7 +35,7 @@ const (
 	// DriverName is the name of csi driver for synology
 	DriverName = "csi.synology.com"
 
-	version = "0.1.0"
+	version = "0.2.0"
 )
 
 // Driver is top interface to run server
