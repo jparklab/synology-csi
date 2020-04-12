@@ -31,8 +31,9 @@ import (
 
 	"golang.org/x/net/context"
 
-	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/utils/exec"
+	utilexec "k8s.io/utils/exec"
+	"k8s.io/utils/mount"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -172,7 +173,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		// mount device to the target path
 		mounter := &mount.SafeFormatAndMount{
 			Interface: mount.New(""),
-			Exec:      mount.NewOsExec(),
+			Exec:      utilexec.New(),
 		}
 
 		options := []string{"rw"}
@@ -241,7 +242,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 
 	mounter := &mount.SafeFormatAndMount{
 		Interface: mount.New(""),
-		Exec:      mount.NewOsExec(),
+		Exec:      utilexec.New(),
 	}
 
 	if err = mounter.Unmount(targetPath); err != nil {

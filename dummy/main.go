@@ -11,6 +11,13 @@ import (
 	_ "errors"
 	_ "flag"
 	_ "fmt"
+	_ "io/ioutil"
+	_ "net/http"
+	_ "net/url"
+	_ "os"
+	_ "strings"
+	_ "time"
+
 	_ "github.com/container-storage-interface/spec/lib/go/csi"
 	_ "github.com/golang/glog"
 	_ "github.com/google/go-querystring/query"
@@ -22,17 +29,11 @@ import (
 	_ "google.golang.org/grpc/codes"
 	_ "google.golang.org/grpc/status"
 	_ "gopkg.in/yaml.v2"
-	_ "io/ioutil"
 	_ "k8s.io/klog"
-	_ "k8s.io/kubernetes/pkg/util/mount"
 	_ "k8s.io/utils/exec"
+	_ "k8s.io/utils/mount"
 	_ "k8s.io/utils/nsenter"
 	_ "k8s.io/utils/path"
-	_ "net/http"
-	_ "net/url"
-	_ "os"
-	_ "strings"
-	_ "time"
 )
 
 func main() {
