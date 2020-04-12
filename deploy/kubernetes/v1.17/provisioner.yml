@@ -45,7 +45,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: boky/csi-provisioner:latest
+          image: quay.io/k8scsi/csi-provisioner:v1.5.0
           args:
             - --provisioner=csi.synology.com
             - --timeout=60s
@@ -65,7 +65,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: boky/synology-csi:latest
+          image: jparklab/synology-csi:v1.0.0-kubernetes-1.17.4
           args :
             - --nodeid
             - NotUsed

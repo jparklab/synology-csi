@@ -78,7 +78,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: boky/csi-attacher:latest
+          image: quay.io/k8scsi/csi-attacher:v2.1.0
           args:
             - --v=5
             - --csi-address=$(ADDRESS)
@@ -95,7 +95,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: boky/synology-csi:latest
+          image: jparklab/synology-csi:v1.0.0-kubernetes-1.18.0
           args:
             - --nodeid
             - NotUsed
