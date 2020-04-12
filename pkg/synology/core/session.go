@@ -91,6 +91,15 @@ type securityData struct {
 	Timeout int `json:"timeout"`
 }
 
+type securityResponseData struct {
+	Data  securityData `json:"data"`
+	Error struct {
+		Code int `json:"code"`
+	} `json:"error"`
+
+	Success bool `json:"success"`
+}
+
 /*
 
 RESPONSE
@@ -265,28 +274,33 @@ func (s *session) login() (string, error) {
 		"method":  {"get"},
 	}
 
-	urlObj, _ := url.Parse(fmt.Sprintf("%s/auth.cgi", s.baseURL))
+	urlObj, _ := url.Parse(fmt.Sprintf("%s/entry.cgi", s.baseURL))
 	urlObj.RawQuery = securityParams.Encode()
 
-	securityResp, err := http.Get(urlObj.String())
+	secResp, err := http.Get(urlObj.String())
 	if err != nil {
 		return "", errors.New("Failed to get security config")
 	}
 
-	body, err = ioutil.ReadAll(securityResp.Body)
+	body, err = ioutil.ReadAll(secResp.Body)
 	defer func() {
-		if err := securityResp.Body.Close(); err != nil {
+		if err := secResp.Body.Close(); err != nil {
 			glog.Errorf("Failed closing the body: %v", err)
 		}
 	}()
 
-	securityConf := securityData{}
-	if err = json.Unmarshal(body, &securityConf); err != nil {
+	securityRespData := securityResponseData{}
+	if err = json.Unmarshal(body, &securityRespData); err != nil {
 		glog.Errorf("Failed to parse auth response: %s(%v)", body, err)
 		return "", err
 	}
 
-	s.timeoutMinute = securityConf.Timeout
+	if !securityRespData.Success {
+		glog.Errorf("Failed to query security config, set timeout to 0: (code: %d)", securityRespData.Error.Code)
+		s.timeoutMinute = 0
+	} else {
+		s.timeoutMinute = securityRespData.Data.Timeout
+	}
 
 	now := time.Now()
 	s.lastLoginTime = &now
