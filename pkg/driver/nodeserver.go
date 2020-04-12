@@ -275,6 +275,11 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
+func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	// Not implemented
+	return &csi.NodeExpandVolumeResponse{}, nil
+}
+
 // Check if session exists for the given IQN
 func (ns *nodeServer) hasSession(iqn string) (bool, error) {
 	// check if we already have a session
