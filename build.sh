@@ -8,7 +8,7 @@ export DOCKER_CLI_EXPERIMENTAL=enabled
 
 if docker buildx inspect ${BUILDER_INSTANCE_NAME} > /dev/null; then
     # clean up any stale instance 
-    docker buildx rm --name ${BUILDER_INSTANCE_NAME}
+    docker buildx rm ${BUILDER_INSTANCE_NAME}
 fi
 
 docker buildx create --name ${BUILDER_INSTANCE_NAME}
