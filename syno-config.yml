@@ -1,0 +1,14 @@
+---
+# syno-config.yml file
+host: <hostname>           # ip address or hostname of the Synology NAS
+port: 5000                 # change this if you use a port other than the default one
+sslVerify: false           # set this true to use https
+username: <login>          # username
+password: <password>       # password
+loginApiVersion: 2         # Optional. Login version. From 2 to 6. Defaults to "2".
+loginHttpMethod: <method>  # Optional. Method. "GET", "POST" or "auto" (default). "auto" uses POST on version >= 6
+sessionName: Core          # You won't need to touch this value
+enableSynoToken: no        # Optional. Set to 'true' to enable syno token. Only for versions 3 and above.
+enableDeviceToken: yes     # Optional. Set to 'true' to enable device token. Only for versions 6 and above.
+deviceId: <device-id>      # Optional. Only for versions 6 and above. If not set, DEVICE_ID environment var is read.
+deviceName: <name>         # Optional. Only for versions 6 and above.
