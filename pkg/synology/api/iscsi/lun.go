@@ -127,6 +127,10 @@ type LunAPI interface {
 		volType string, // type of the volume, see LunType for available types
 	) (*Lun, error)
 	Delete(id string) error
+	Update(
+		id string,
+		size int64,
+	) error
 }
 
 type lunAPI struct {
@@ -212,6 +216,20 @@ func (l *lunAPI) Delete(id string) error {
 	_, err := l.apiEntry.Post("delete", url.Values{
 		"uuid": {fmt.Sprintf("\"%s\"", id)},
 	})
+
+	return err
+}
+
+func (l *lunAPI) Update(
+	id string,
+	size int64,
+) error {
+	_, err := l.apiEntry.Post("set", url.Values{
+		"uuid":     {fmt.Sprintf("\"%s\"", id)},
+		"new_size": {fmt.Sprintf("%d", size)},
+	})
+
+	glog.V(5).Infof("Updated a LUN: %s", id)
 
 	return err
 }

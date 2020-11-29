@@ -92,6 +92,7 @@ func NewDriver(nodeID string, endpoint string, synoOption *options.SynologyOptio
 			csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 			csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 		})
 	csiDriver.AddVolumeCapabilityAccessModes(
 		[]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})

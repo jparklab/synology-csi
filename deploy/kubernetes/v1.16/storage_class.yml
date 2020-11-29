@@ -11,3 +11,4 @@ provisioner: csi.synology.com
 #   location: '/volume1'
 #   type: 'BLUN'
 reclaimPolicy: Delete
+allowVolumeExpansion: true
