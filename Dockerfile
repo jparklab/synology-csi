@@ -60,7 +60,7 @@ FROM alpine:latest
 LABEL maintainers="Kubernetes Authors"
 LABEL description="Synology CSI Plugin"
 
-RUN apk add --no-cache e2fsprogs e2fsprogs-extra xfsprogs xfsprogs-extra util-linux iproute2
+RUN apk add --no-cache e2fsprogs e2fsprogs-extra xfsprogs xfsprogs-extra util-linux iproute2 blkid
 COPY --from=compiler /go/src/github.com/jparklab/synology-csi/bin/synology-csi-driver synology-csi-driver
 
 ENTRYPOINT ["/synology-csi-driver"]
