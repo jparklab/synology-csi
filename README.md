@@ -208,6 +208,7 @@ parameters:
   type: 'FILE'          # if the location has ext4 file system, use FILE for thick provisioning, and THIN for thin provisioning.
                         # for btrfs file system, use BLUN_THICK for thick provisioning, and BLUN for thin provisioning.
 reclaimPolicy: Delete
+allowVolumeExpansion: true # support from Kubernetes 1.16
 ```
 
 ***NOTE:*** if you have already created storage class, you would need to delete the storage class and recreate it.

@@ -17,6 +17,7 @@
 package driver
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -46,4 +47,24 @@ func parseVolumeID(volumeID string) (int, int, error) {
 	}
 
 	return targetID, mappingIndex, nil
+}
+
+func validateCapacity(requestBytes, limitBytes int64) (int64, error) {
+	if requestBytes < 0 {
+		return 0, errors.New("request bytes must be positive integer")
+	}
+	if limitBytes < 0 {
+		return 0, errors.New("limit bytes must be positive integer")
+	}
+
+	if limitBytes != 0 && requestBytes > limitBytes {
+		return 0, fmt.Errorf(
+			"request must less than limit: request=%d limit=%d", requestBytes, limitBytes,
+		)
+	}
+
+	if requestBytes == 0 {
+		return 1, nil
+	}
+	return (requestBytes-1)>>30 + 1, nil
 }

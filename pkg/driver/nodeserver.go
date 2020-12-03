@@ -19,6 +19,7 @@ package driver
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"k8s.io/kubernetes/pkg/util/resizefs"
 	"k8s.io/utils/exec"
 	utilexec "k8s.io/utils/exec"
 	"k8s.io/utils/mount"
@@ -276,7 +278,65 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 }
 
 func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	// Not implemented
+	volID := req.GetVolumeId()
+	if volID == "" {
+		msg := fmt.Sprintf("Cannot find volume id")
+		glog.V(3).Info(msg)
+		return nil, status.Error(codes.FailedPrecondition, msg)
+	}
+
+	volumePath := req.GetVolumePath()
+	if volumePath == "" {
+		msg := fmt.Sprintf("Cannot find volume path")
+		glog.V(3).Info(msg)
+		return nil, status.Error(codes.FailedPrecondition, msg)
+	}
+
+	fsType := req.GetVolumeCapability().GetMount().GetFsType()
+	if fsType == "" {
+		msg := fmt.Sprintf("Cannot detect filesystem type")
+		glog.V(3).Info(msg)
+		return nil, status.Error(codes.FailedPrecondition, msg)
+	}
+
+	mounter := &mount.SafeFormatAndMount{
+		Interface: mount.New(""),
+		Exec:      utilexec.New(),
+	}
+
+	// ex) devicePath = /dev/sdX
+	args := []string{"-o", "source", "--noheadings", "--target", volumePath}
+	output, err := mounter.Exec.Command("findmnt", args...).CombinedOutput()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Cannot detect device path for volume %s: %v", volumePath, err)
+	}
+	devicePath := strings.TrimSpace(string(output))
+
+	// ex) /sys/block/sdX/device/rescan is rescan device path
+	blockDeviceRescanPath := ""
+	parts := strings.Split(devicePath, "/")
+	if len(parts) == 3 && strings.HasPrefix(parts[1], "dev") {
+		d := filepath.Join("/sys/block", parts[2], "device", "rescan")
+		blockDeviceRescanPath, err = filepath.EvalSymlinks(d)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "")
+		}
+	} else {
+		msg := fmt.Sprintf("device path %s is invalid format", devicePath)
+		return nil, status.Error(codes.Internal, msg)
+	}
+	// write data for triggering to rescan
+	err = ioutil.WriteFile(blockDeviceRescanPath, []byte{'1'}, 0666)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// resize file system
+	r := resizefs.NewResizeFs(mounter)
+	if _, err := r.Resize(devicePath, volumePath); err != nil {
+		return nil, status.Errorf(codes.Internal, "Could not resize volume %s to %s: %s", devicePath, volumePath, err.Error())
+	}
+
 	return &csi.NodeExpandVolumeResponse{}, nil
 }
 
@@ -304,4 +364,25 @@ func (ns *nodeServer) hasSession(iqn string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (ns *nodeServer) NodeGetCapabilities(context.Context, *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+	capabilities := []csi.NodeServiceCapability_RPC_Type{
+		csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
+	}
+
+	caps := make([]*csi.NodeServiceCapability, len(capabilities))
+	for i, capability := range capabilities {
+		caps[i] = &csi.NodeServiceCapability{
+			Type: &csi.NodeServiceCapability_Rpc{
+				Rpc: &csi.NodeServiceCapability_RPC{
+					Type: capability,
+				},
+			},
+		}
+	}
+
+	return &csi.NodeGetCapabilitiesResponse{
+		Capabilities: caps,
+	}, nil
 }

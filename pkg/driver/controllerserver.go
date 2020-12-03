@@ -18,6 +18,7 @@ package driver
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
@@ -55,7 +56,72 @@ type controllerServer struct {
 }
 
 func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	return &csi.ControllerExpandVolumeResponse{}, nil
+	volID := req.GetVolumeId()
+
+	targetID, mappingIndex, err := parseVolumeID(volID)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	target, err := cs.targetAPI.Get(targetID)
+	if err != nil {
+		msg := fmt.Sprintf("Unable to find target of ID(%d): %v", targetID, err)
+		glog.V(3).Info(msg)
+		return nil, status.Error(codes.NotFound, msg)
+	}
+
+	if len(target.MappedLuns) < mappingIndex {
+		msg := fmt.Sprintf("Target %s(%d) does not have mapping for index %d", target.Name, target.TargetID, mappingIndex)
+		glog.V(3).Info(msg)
+		return nil, status.Error(codes.FailedPrecondition, msg)
+	}
+
+	// Get LUN
+	mapping := target.MappedLuns[mappingIndex-1]
+	lun, err := cs.lunAPI.Get(mapping.LunUUID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Get request size and current size (GB)
+	requestGb, err := validateCapacity(req.GetCapacityRange().GetRequiredBytes(), req.GetCapacityRange().GetLimitBytes())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	currentGb := lun.Size >> 30
+
+	// Check whether new size is lager than current LUN size
+	if requestGb <= currentGb {
+		return &csi.ControllerExpandVolumeResponse{
+			CapacityBytes:         currentGb << 30,
+			NodeExpansionRequired: true,
+		}, nil
+	}
+
+	// Check whether expanded size is allocatable or not in synology volume
+	vol, err := cs.volumeAPI.Get(lun.Location)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	capacity, _ := strconv.ParseInt(vol.SizeFreeByte, 10, 64)
+	if capacity < (requestGb<<30 - currentGb<<30) {
+		msg := fmt.Sprintf("no enough space in synology volume: %s Byte left", capacity)
+		return nil, status.Error(codes.Internal, msg)
+	}
+
+	// Update LUN for expanding volume
+	err = cs.lunAPI.Update(lun.UUID, requestGb<<30)
+	if err != nil {
+		msg := fmt.Sprintf(
+			"Unable to update volume: %s", lun.Name)
+		glog.V(3).Info(msg)
+		return nil, status.Error(codes.Internal, msg)
+	}
+
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes:         requestGb << 30,
+		NodeExpansionRequired: true,
+	}, nil
 }
 
 // CreateVolume creates a LUN and a target for a volume
