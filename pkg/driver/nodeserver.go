@@ -19,6 +19,7 @@ package driver
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -154,59 +155,64 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, errors.New(msg)
 	}
 
-	glog.V(5).Infof("Target path: %s", targetPath)
+	glog.V(5).Infof("Checking mount point: %s", targetPath)
 
-	/*
-		notMnt, err := isLikelyNotMountPointAttach(targetPath)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	*/
-	notMnt := true
-
-	if notMnt {
-		exists, err := mount.PathExists(devicePath)
-		if !exists || err != nil {
-			msg := fmt.Sprintf("Could not find ISCSI device: %s", devicePath)
-			glog.V(3).Info(msg)
-			return nil, status.Error(codes.Internal, msg)
-		}
-
-		// mount device to the target path
-		mounter := &mount.SafeFormatAndMount{
-			Interface: mount.New(""),
-			Exec:      utilexec.New(),
-		}
-
-		options := []string{"rw"}
-		mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
-		options = append(options, mountFlags...)
-
-		glog.V(5).Infof(
-			"Mounting %s to %s(fstype: %s, options: %v)",
-			devicePath, targetPath, fsType, options)
-		err = mounter.FormatAndMount(devicePath, targetPath, fsType, options)
-		if err != nil {
-			msg := fmt.Sprintf(
-				"Failed to mount %s to %s(fstype: %s, options: %v): %v",
-				devicePath, targetPath, fsType, options, err)
-			glog.V(5).Info(msg)
-			return nil, status.Error(codes.Internal, msg)
-		}
-
-		// TODO(jpark):
-		// change owner of the root path:
-		// https://github.com/kubernetes/kubernetes/pull/62486
-		//	 https://github.com/kubernetes/kubernetes/pull/62486/files
-		// https://github.com/kubernetes/kubernetes/issues/66323
-		//	https://github.com/kubernetes/kubernetes/pull/67280/files
-
-		glog.V(5).Infof(
-			"Mounted %s to %s(fstype: %s, options: %v)",
-			devicePath, targetPath, fsType, options)
-	} else {
-		glog.V(5).Infof("%s is already mounted", targetPath)
+	// mount device to the target path
+	mounter := &mount.SafeFormatAndMount{
+		Interface: mount.New(""),
+		Exec:      utilexec.New(),
 	}
+
+	notMnt, err := mounter.IsLikelyNotMountPoint(targetPath)
+	if !notMnt {
+		glog.V(5).Infof("%s is already mounted", targetPath)
+		return &csi.NodePublishVolumeResponse{}, nil
+	}
+
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, status.Errorf(codes.Internal, "failed to check mount target: %v", err)
+		}
+		glog.V(6).Info("Creating mount directory: %s", targetPath)
+		err = os.Mkdir(targetPath, 0750)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to create mount directory: %v", err)
+		}
+	}
+
+	exists, err := mount.PathExists(devicePath)
+	if !exists || err != nil {
+		msg := fmt.Sprintf("Could not find ISCSI device: %s", devicePath)
+		glog.V(3).Info(msg)
+		return nil, status.Error(codes.Internal, msg)
+	}
+
+	options := []string{"rw"}
+	mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
+	options = append(options, mountFlags...)
+
+	glog.V(5).Infof(
+		"Mounting %s to %s(fstype: %s, options: %v)",
+		devicePath, targetPath, fsType, options)
+	err = mounter.FormatAndMount(devicePath, targetPath, fsType, options)
+	if err != nil {
+		msg := fmt.Sprintf(
+			"Failed to mount %s to %s(fstype: %s, options: %v): %v",
+			devicePath, targetPath, fsType, options, err)
+		glog.V(5).Info(msg)
+		return nil, status.Error(codes.Internal, msg)
+	}
+
+	// TODO(jpark):
+	// change owner of the root path:
+	// https://github.com/kubernetes/kubernetes/pull/62486
+	//	 https://github.com/kubernetes/kubernetes/pull/62486/files
+	// https://github.com/kubernetes/kubernetes/issues/66323
+	//	https://github.com/kubernetes/kubernetes/pull/67280/files
+
+	glog.V(5).Infof(
+		"Mounted %s to %s(fstype: %s, options: %v)",
+		devicePath, targetPath, fsType, options)
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
@@ -228,23 +234,19 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.NotFound, msg)
 	}
 
-	/*
-		notMnt, err := isLikelyNotMountPointDetach(targetPath)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	*/
-	notMnt := false
+	mounter := &mount.SafeFormatAndMount{
+		Interface: mount.New(""),
+		Exec:      utilexec.New(),
+	}
 
+	notMnt, err := mounter.IsLikelyNotMountPoint(targetPath)
 	if notMnt {
 		msg := fmt.Sprintf("Path %s not mounted", targetPath)
 		glog.V(3).Info(msg)
 		return nil, status.Errorf(codes.NotFound, msg)
 	}
-
-	mounter := &mount.SafeFormatAndMount{
-		Interface: mount.New(""),
-		Exec:      utilexec.New(),
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to detect if volume is mounted: %v", err)
 	}
 
 	if err = mounter.Unmount(targetPath); err != nil {
