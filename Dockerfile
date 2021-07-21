@@ -43,14 +43,14 @@ COPY dummy/main.go ./
 ARG TARGETPLATFORM
 RUN env \
         CGO_ENABLED=0 \
-        GOARM=$(echo "$TARGETPLATFORM" | cut -f3 -d/ | cut -c2-) \
+        GOOS=$(echo "$TARGETPLATFORM" | cut -f3 -d/ | cut -c2-) \
         GOARCH=$(echo "$TARGETPLATFORM" | cut -f2 -d/) \
     make dummy && rm bin/dummy main.go
 COPY cmd ./cmd
 COPY pkg ./pkg
 RUN env \
         CGO_ENABLED=0 \
-        GOARM=$(echo "$TARGETPLATFORM" | cut -f3 -d/ | cut -c2-) \
+        GOOS=$(echo "$TARGETPLATFORM" | cut -f3 -d/ | cut -c2-) \
         GOARCH=$(echo "$TARGETPLATFORM" | cut -f2 -d/) \
     make
 

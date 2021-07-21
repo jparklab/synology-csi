@@ -30,8 +30,8 @@ import (
 	_ "google.golang.org/grpc/status"
 	_ "gopkg.in/yaml.v2"
 	_ "k8s.io/klog"
+	_ "k8s.io/mount-utils"
 	_ "k8s.io/utils/exec"
-	_ "k8s.io/utils/mount"
 	_ "k8s.io/utils/nsenter"
 	_ "k8s.io/utils/path"
 )

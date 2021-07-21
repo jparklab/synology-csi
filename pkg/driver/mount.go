@@ -22,7 +22,7 @@ import (
 
 	"github.com/golang/glog"
 
-	"k8s.io/utils/mount"
+	mount "k8s.io/mount-utils"
 )
 
 func isLikelyNotMountPointAttach(targetpath string) (bool, error) {
