@@ -19,11 +19,11 @@ package driver
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"io/ioutil"
 
 	"github.com/golang/glog"
 
@@ -32,10 +32,9 @@ import (
 
 	"golang.org/x/net/context"
 
-	"k8s.io/kubernetes/pkg/util/resizefs"
+	mount "k8s.io/mount-utils"
 	"k8s.io/utils/exec"
 	utilexec "k8s.io/utils/exec"
-	"k8s.io/utils/mount"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -172,6 +171,17 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			return nil, status.Error(codes.Internal, msg)
 		}
 
+		// Create targetPath directory so we can mount to it.
+		if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+			err := os.MkdirAll(targetPath, os.ModeDir)
+
+			if err != nil {
+				msg := fmt.Sprintf("Failed to create directory %s. Err: %v", targetPath, err)
+				glog.V(3).Info(msg)
+				return nil, errors.New(msg)
+			}
+		}
+
 		// mount device to the target path
 		mounter := &mount.SafeFormatAndMount{
 			Interface: mount.New(""),
@@ -263,6 +273,17 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Errorf(codes.Internal, msg)
 	}
 
+	// Clean up the formerly mounted directory by deleting it.
+	if _, err := os.Stat(targetPath); os.IsExist(err) {
+		err := os.RemoveAll(targetPath)
+
+		if err != nil {
+			msg := fmt.Sprintf("Failed to delete directory %s. Err: %v", targetPath, err)
+			glog.V(3).Info(msg)
+			return nil, errors.New(msg)
+		}
+	}
+
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
@@ -332,7 +353,7 @@ func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	}
 
 	// resize file system
-	r := resizefs.NewResizeFs(mounter)
+	r := mount.NewResizeFs(mounter.Exec)
 	if _, err := r.Resize(devicePath, volumePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not resize volume %s to %s: %s", devicePath, volumePath, err.Error())
 	}
