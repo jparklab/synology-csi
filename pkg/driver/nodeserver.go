@@ -156,18 +156,27 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	glog.V(5).Infof("Target path: %s", targetPath)
 
-	/*
-		notMnt, err := isLikelyNotMountPointAttach(targetPath)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	*/
-	notMnt := true
+	notMnt, err := isLikelyNotMountPointAttach(targetPath)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// notMnt := true
 
 	if notMnt {
 		exists, err := mount.PathExists(devicePath)
 		if !exists || err != nil {
 			msg := fmt.Sprintf("Could not find ISCSI device: %s", devicePath)
+			glog.V(3).Info(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
+
+		targetExists, err := mount.PathExists(targetPath)
+		if err != nil {
+			msg := fmt.Sprintf("Corrupted mount point: %s", targetPath)
+			glog.V(3).Info(msg)
+			return nil, status.Error(codes.Internal, msg)
+		} else if !targetExists {
+			msg := fmt.Sprintf("Mount point does not exist: %s", targetPath)
 			glog.V(3).Info(msg)
 			return nil, status.Error(codes.Internal, msg)
 		}
